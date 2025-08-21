@@ -1,1 +1,195 @@
 
+<!-- district-map.html
+
+Place this file and 'district12_V3.geojson' in the same folder and open this HTML in a browser.
+
+Features:
+- Input field (with suggestions) to type or choose a district name
+- "Create map" button to draw/highlight district boundaries from the GeoJSON file
+- Attempts multiple property names to find the district name; falls back to the first string property found
+- Shows a message when nothing is found
+-->
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>District Map Drawer</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-sA+e2g0z1kX0g1fY3j2gqk1W0g0kQwZQp+g9+o0RMmM=" crossorigin="" />
+  <style>
+    html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial}
+    #app{display:flex;flex-direction:column;height:100%}
+    header{padding:12px;background:#0b5;display:flex;gap:8px;align-items:center}
+    input[type=text]{padding:8px;border-radius:6px;border:1px solid #ccc;min-width:220px}
+    button{padding:8px 12px;border-radius:6px;border:none;background:#075;color:white;cursor:pointer}
+    #status{margin-left:8px;font-size:0.95rem;color:#080}
+    #map{flex:1}
+    .msg{padding:6px 12px;color:#900}
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header>
+      <label for="districtInput">District:</label>
+      <input id="districtInput" list="districtList" placeholder="Type or choose district name" autocomplete="off">
+      <datalist id="districtList"></datalist>
+      <button id="drawBtn">Create map</button>
+      <div id="status"></div>
+    </header>
+    <div id="map"></div>
+    <div id="note" class="msg" style="display:none"></div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-o9N1j8q+v4Y1+g8W2b7s3gYz6xwQv0s2e1c6Rk0+4gI=" crossorigin=""></script>
+  <script>
+    // Configuration: path to geojson file (same folder)
+    const GEOJSON_URL = 'district12_V3.geojson';
+
+    const map = L.map('map', {minZoom: 6}).setView([10.85, 76.27], 7);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    let rawGeo = null;
+    let currentLayer = null;
+
+    const input = document.getElementById('districtInput');
+    const datalist = document.getElementById('districtList');
+    const drawBtn = document.getElementById('drawBtn');
+    const status = document.getElementById('status');
+    const note = document.getElementById('note');
+
+    status.textContent = 'Loading GeoJSON...';
+
+    // Attempt to load the geojson file
+    fetch(GEOJSON_URL).then(r => {
+      if(!r.ok) throw new Error('Failed to load ' + GEOJSON_URL + ' (status '+r.status+')');
+      return r.json();
+    }).then(gj => {
+      rawGeo = gj;
+      status.textContent = '';
+      populateDatalist(gj);
+    }).catch(err => {
+      status.textContent = '';
+      note.style.display = 'block';
+      note.textContent = 'Error loading GeoJSON: ' + err.message + '. Make sure district12_V3.geojson is in the same folder and served by a web server (some browsers block local file fetch).';
+      note.style.color = '#900';
+      console.error(err);
+    });
+
+    // Keys likely to hold district names (try in order)
+    const LIKELY_NAME_KEYS = ['NAME','Name','name','DISTRICT','District','district','DISTRICT_N','DISTRICT_NAME','DIST_NAME','DISTRICTNA','NAME_1','NAME_0','DIST_NAME'];
+
+    function getFeatureName(feature){
+      if(!feature || !feature.properties) return null;
+      for(const k of LIKELY_NAME_KEYS){
+        if(k in feature.properties){
+          const v = feature.properties[k];
+          if(typeof v === 'string' && v.trim().length>0) return v.trim();
+        }
+      }
+      // fallback: first string property
+      for(const k in feature.properties){
+        const v = feature.properties[k];
+        if(typeof v === 'string' && v.trim().length>0) return v.trim();
+        // sometimes numeric codes + separate label; skip numeric
+      }
+      return null;
+    }
+
+    function populateDatalist(geojson){
+      const names = new Set();
+      if(!geojson.features) return;
+      for(const f of geojson.features){
+        const n = getFeatureName(f);
+        if(n) names.add(n);
+      }
+      // add sorted
+      Array.from(names).sort((a,b)=>a.localeCompare(b)).forEach(n => {
+        const opt = document.createElement('option');
+        opt.value = n;
+        datalist.appendChild(opt);
+      });
+    }
+
+    function showNote(text, isError){
+      note.style.display = 'block';
+      note.style.color = isError ? '#900' : '#080';
+      note.textContent = text;
+      setTimeout(()=>{ note.style.display = 'none'; }, 6000);
+    }
+
+    function highlightFeatures(matchNames){
+      if(!rawGeo) return;
+      // Remove previous
+      if(currentLayer) map.removeLayer(currentLayer);
+      // Filter features
+      const matched = rawGeo.features.filter(f => {
+        const n = getFeatureName(f);
+        if(!n) return false;
+        // case-insensitive exact match OR contained
+        return matchNames.some(m => n.toLowerCase() === m.toLowerCase() || n.toLowerCase().includes(m.toLowerCase()) );
+      });
+      if(matched.length === 0){
+        showNote('No matching district found for: "' + input.value + '"', true);
+        return;
+      }
+
+      currentLayer = L.geoJSON(matched, {
+        style: function(){
+          return {
+            color: '#0033cc',
+            weight: 2,
+            fillColor: '#66b2ff',
+            fillOpacity: 0.45
+          };
+        },
+        onEachFeature: function(feature, layer){
+          const n = getFeatureName(feature) || 'Unknown';
+          let html = '<strong>' + escapeHtml(n) + '</strong><br/>';
+          // show other useful properties if any
+          const props = feature.properties || {};
+          const extras = Object.keys(props).filter(k => !LIKELY_NAME_KEYS.includes(k) && k.toLowerCase() !== 'geom' ).slice(0,6);
+          if(extras.length){
+            html += '<small>' + extras.map(k => escapeHtml(k)+': '+escapeHtml(String(props[k]))).join('<br/>') + '</small>';
+          }
+          layer.bindPopup(html);
+        }
+      }).addTo(map);
+
+      // fit to bounds
+      try{
+        const bounds = currentLayer.getBounds();
+        if(bounds.isValid()) map.fitBounds(bounds.pad(0.1));
+      }catch(e){ console.warn(e); }
+
+      showNote('Found and highlighted ' + matched.length + ' feature(s).', false);
+    }
+
+    function escapeHtml(s){
+      return s.replace(/[&<>\"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[c]);
+    }
+
+    drawBtn.addEventListener('click', ()=>{
+      if(!rawGeo){ showNote('GeoJSON not yet loaded.', true); return; }
+      const q = input.value.trim();
+      if(q.length === 0){ showNote('Please enter a district name.', true); return; }
+      // allow comma-separated queries to match multiple
+      const parts = q.split(',').map(s=>s.trim()).filter(Boolean);
+      highlightFeatures(parts);
+    });
+
+    // also trigger on Enter in input
+    input.addEventListener('keydown', e => { if(e.key === 'Enter'){ drawBtn.click(); } });
+
+    // helpful note about local file restrictions
+    if(location.protocol === 'file:'){
+      note.style.display = 'block';
+      note.style.color = '#a60';
+      note.textContent = 'Tip: If the GeoJSON does not load when opening this file directly, run a simple local web server (python -m http.server) and open via http://localhost:8000/';
+    }
+  </script>
+</body>
+</html>
