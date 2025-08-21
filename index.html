@@ -1,340 +1,217 @@
+<!-- version: v1.1.0 (2025-08-21, IST) -->
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kerala Administrative Divisions</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-        integrity="sha256-p4Wx5wL7x35XlJ6g+HnE8G+H5qU9pC/FwH1vC+C4o4=" crossorigin="" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-        integrity="sha256-p4Wx5wL7x35XlJ6g+HnE8G+H5qU9pC/FwH1vC+C4o4=" crossorigin=""></script>
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"
-        integrity="sha256-/JqT3SQf8nKx4u/h5X/2N5x/C20J4r/u6jDq9+2nFk5=" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            height: 100vh;
-            overflow: hidden;
-        }
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kerala Administrative Boundaries – Interactive Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
+  <style>
+    :root {
+      --sidebar-width: 340px;
+      --gap: 10px;
+      --panel-pad: 12px;
+      --radius: 14px;
+      --shadow: 0 6px 24px rgba(0,0,0,0.12);
+    }
+    html, body { height: 100%; margin: 0; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial; }
+    #app { display: grid; grid-template-columns: var(--sidebar-width) 1fr; height: 100%; }
+    #map { width: 100%; height: 100%; background: #fff; }
 
-        #version-display {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            z-index: 2000;
-            background: rgba(255, 255, 255, 0.7);
-            padding: 5px 10px;
-            border-radius: 5px;
-            font-size: 14px;
-        }
-
-        #panel-container {
-            width: 300px;
-            min-width: 250px;
-            background-color: #f0f0f0;
-            padding: 20px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-        }
-
-        .input-panel {
-            background-color: #fff;
-            padding: 15px;
-            border-radius: 8px;
-            border: 1px solid #ddd;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .input-panel h3 {
-            margin: 0 0 10px;
-            font-size: 1.2em;
-        }
-
-        .input-panel label {
-            font-weight: bold;
-            font-size: 0.9em;
-        }
-
-        .input-panel input[type="color"],
-        .input-panel input[type="range"] {
-            width: 100%;
-            cursor: pointer;
-        }
-
-        .select2-container--default .select2-selection--multiple {
-            border: 1px solid #ccc !important;
-            border-radius: 4px !important;
-            min-height: 38px !important;
-        }
-
-        .select2-container--default .select2-selection--multiple .select2-selection__choice {
-            background-color: #e4e4e4 !important;
-            border: 1px solid #aaa !important;
-        }
-
-        .button-group {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 10px;
-        }
-
-        .button-group button {
-            padding: 8px 12px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            flex-grow: 1;
-        }
-
-        .button-group button:first-child {
-            margin-right: 5px;
-            background-color: #4CAF50;
-            color: white;
-        }
-
-        .button-group button:last-child {
-            margin-left: 5px;
-            background-color: #f44336;
-            color: white;
-        }
-
-        #map {
-            flex-grow: 1;
-        }
-
-        #base-map-panel {
-            position: fixed;
-            bottom: 10px;
-            right: 10px;
-            z-index: 1000;
-            background: rgba(255, 255, 255, 0.8);
-            padding: 10px;
-            border-radius: 5px;
-        }
-
-        .leaflet-popup-content-wrapper,
-        .leaflet-popup-tip {
-            box-shadow: 0 3px 14px rgba(0, 0, 0, 0.4);
-        }
-    </style>
+    .sidebar {
+      position: relative;
+      background: #fafafa;
+      border-right: 1px solid #e5e5e5;
+      padding: 16px 12px 24px 12px;
+      overflow-y: auto;
+    }
+    .panel {
+      background: #fff;
+      border: 1px solid #e6e6e6;
+      border-radius: var(--radius);
+      padding: var(--panel-pad);
+      margin-bottom: 14px;
+      box-shadow: var(--shadow);
+    }
+    .panel h3 { margin: 0 0 10px 0; font-size: 16px; }
+    .row { margin: 8px 0; }
+    label { font-size: 12px; color: #333; }
+    input[type="range"], input[type="color"] {
+      width: 100%;
+    }
+    .muted { font-size: 12px; color: #666; }
+    .btns { display: flex; gap: 10px; margin-top: 8px; }
+    button { flex: 1; padding: 10px 12px; border-radius: 12px; border: 1px solid #d9d9d9; background: #fff; cursor: pointer; }
+    button.primary { background: #111; color: #fff; border-color: #111; }
+    .version-badge {
+      position: fixed; top: 12px; right: 12px; z-index: 9999;
+      background: rgba(17,17,17,0.9); color: #fff; padding: 6px 10px; border-radius: 999px; font-size: 12px;
+      box-shadow: var(--shadow);
+    }
+    .toggle { position: fixed; left: 10px; top: 10px; z-index: 10000; border-radius: 999px; border: 1px solid #ccc; background: #fff; padding: 8px 10px; cursor: pointer; box-shadow: var(--shadow); }
+    @media (max-width: 900px) {
+      #app { grid-template-columns: 1fr; }
+      .sidebar { position: fixed; left: 10px; top: 54px; bottom: 10px; width: calc(100% - 20px); max-width: 480px; border-radius: var(--radius); display: none; }
+      .sidebar.open { display: block; }
+    }
+  </style>
 </head>
-
 <body>
-    <div id="version-display">Version: 1.0.0</div>
+  <div class="version-badge" id="versionBadge">v1.1.0</div>
+  <button class="toggle" id="toggleBtn">Panels</button>
+  <div id="app">
+    <aside class="sidebar" id="sidebar">
+      <div class="panel" id="basemapPanel">
+        <h3>🗺️ Base Map</h3>
+        <label for="basemapSelect">Choose base map</label>
+        <select id="basemapSelect"></select>
+      </div>
 
-    <div id="panel-container">
-        <div class="input-panel" id="district-panel">
-            <h3>Districts</h3>
-            <label for="district-select">Select Districts:</label>
-            <select id="district-select" multiple="multiple" style="width: 100%;">
-            </select>
-            <label for="district-color">Boundary Color:</label>
-            <input type="color" id="district-color" value="#000000">
-            <label for="district-transparency">Fill Transparency:</label>
-            <input type="range" id="district-transparency" min="0" max="1" step="0.01" value="1">
-            <div class="button-group">
-                <button onclick="drawBoundaries('district')">Draw</button>
-                <button onclick="clearBoundaries('district')">Clear</button>
-            </div>
+      <div class="panel" id="districtPanel">
+        <h3>📍 Districts</h3>
+        <label for="districtSelect">Select districts</label>
+        <select id="districtSelect" multiple></select>
+        <div class="row">
+          <label for="districtColor">Color</label>
+          <input id="districtColor" type="color" value="#000000" />
         </div>
+        <div class="row">
+          <label for="districtTrans">Transparency</label>
+          <input id="districtTrans" type="range" min="0" max="100" value="100" />
+          <div class="muted" id="districtTransVal">100%</div>
+        </div>
+        <div class="btns">
+          <button id="drawDistrict" class="primary">Draw</button>
+          <button id="clearDistrict">Clear</button>
+        </div>
+      </div>
 
-        <div class="input-panel" id="assembly-panel">
-            <h3>Assemblies</h3>
-            <label for="assembly-select">Select Assemblies:</label>
-            <select id="assembly-select" multiple="multiple" style="width: 100%;">
-            </select>
-            <label for="assembly-color">Boundary Color:</label>
-            <input type="color" id="assembly-color" value="#000000">
-            <label for="assembly-transparency">Fill Transparency:</label>
-            <input type="range" id="assembly-transparency" min="0" max="1" step="0.01" value="1">
-            <div class="button-group">
-                <button onclick="drawBoundaries('assembly')">Draw</button>
-                <button onclick="clearBoundaries('assembly')">Clear</button>
-            </div>
+      <div class="panel" id="assemblyPanel">
+        <h3>🧭 Assemblies</h3>
+        <label for="assemblySelect">Select assemblies</label>
+        <select id="assemblySelect" multiple></select>
+        <div class="row">
+          <label for="assemblyColor">Color</label>
+          <input id="assemblyColor" type="color" value="#000000" />
         </div>
-    </div>
+        <div class="row">
+          <label for="assemblyTrans">Transparency</label>
+          <input id="assemblyTrans" type="range" min="0" max="100" value="100" />
+          <div class="muted" id="assemblyTransVal">100%</div>
+        </div>
+        <div class="btns">
+          <button id="drawAssembly" class="primary">Draw</button>
+          <button id="clearAssembly">Clear</button>
+        </div>
+      </div>
+    </aside>
 
     <div id="map"></div>
+  </div>
 
-    <div id="base-map-panel">
-        <h4>Select Base Map</h4>
-        <select id="base-map-selector">
-            <option value="osm">OpenStreetMap</option>
-            <option value="carto">CartoDB Positron</option>
-            <option value="none">None (No Base Map)</option>
-        </select>
-    </div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+  <script>
+    const VERSION = 'v1.1.0';
+    document.getElementById('versionBadge').textContent = VERSION;
 
-    <script>
-        const version = '1.0.0';
-        document.getElementById('version-display').innerText = `Version: ${version}`;
+    const map = L.map('map', { center: [10.1632, 76.6413], zoom: 8 });
 
-        let map = L.map('map').setView([10.8505, 76.2711], 8);
+    map.createPane('districts').style.zIndex = 350;
+    map.createPane('assemblies').style.zIndex = 400;
 
-        const baseLayers = {
-            'osm': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            }),
-            'carto': L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/attribution">CARTO</a>'
-            })
-        };
+    const baseLayers = {
+      'None': L.layerGroup(),
+      'OpenStreetMap': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'),
+      'Carto Light': L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'),
+      'Esri Imagery': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}')
+    };
+    let activeBase = baseLayers['OpenStreetMap'];
+    activeBase.addTo(map);
 
-        baseLayers.osm.addTo(map);
+    const basemapSelect = document.getElementById('basemapSelect');
+    Object.keys(baseLayers).forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name; opt.textContent = name;
+      if (name === 'OpenStreetMap') opt.selected = true;
+      basemapSelect.appendChild(opt);
+    });
+    basemapSelect.addEventListener('change', () => {
+      if (activeBase) map.removeLayer(activeBase);
+      activeBase = baseLayers[basemapSelect.value];
+      if (activeBase) activeBase.addTo(map);
+    });
 
-        document.getElementById('base-map-selector').addEventListener('change', function (e) {
-            const selectedBaseMap = e.target.value;
-            for (let layer in baseLayers) {
-                if (map.hasLayer(baseLayers[layer])) {
-                    map.removeLayer(baseLayers[layer]);
-                }
-            }
-            if (selectedBaseMap !== 'none') {
-                baseLayers[selectedBaseMap].addTo(map);
-            }
-        });
+    const districtLayerGroup = L.layerGroup().addTo(map);
+    const assemblyLayerGroup = L.layerGroup().addTo(map);
 
-        const geojsonLayers = {
-            'district': null,
-            'assembly': null
-        };
+    async function loadGeoJSON(path) {
+      const r = await fetch(path);
+      return await r.json();
+    }
 
-        const drawnLayers = {
-            'district': L.layerGroup().addTo(map),
-            'assembly': L.layerGroup().addTo(map)
-        };
+    function fillChoices(selectEl, features) {
+      const names = [...new Set(features.map(f => f.properties?.Name).filter(n => n))].sort();
+      names.forEach(n => {
+        const opt = document.createElement('option');
+        opt.value = n; opt.textContent = n;
+        selectEl.appendChild(opt);
+      });
+      return new Choices(selectEl, { removeItemButton: true, searchEnabled: true });
+    }
 
-        const geojsonUrls = {
-            'district': 'district_V15.geojson',
-            'assembly': 'assembly_V15.geojson'
-        };
+    function transparencyToOpacity(val) { return 1 - (val/100); }
 
-        async function fetchAndPopulateDropdown(type) {
-            try {
-                const response = await fetch(geojsonUrls[type]);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const geojsonData = await response.json();
-                geojsonLayers[type] = geojsonData;
-                const selectElement = $(`#${type}-select`);
-                const names = geojsonData.features
-                    .map(feature => feature.properties.Name)
-                    .filter(name => name)
-                    .sort();
+    function drawFeatures(features, selected, color, pane, group, fillOpacity) {
+      features.filter(f => selected.includes(f.properties?.Name)).forEach(f => {
+        L.geoJSON(f, { pane, style: { color, weight: 2, fillColor: color, fillOpacity } }).addTo(group);
+      });
+    }
 
-                names.forEach(name => {
-                    const option = new Option(name, name, false, false);
-                    selectElement.append(option);
-                });
-                selectElement.select2();
-            } catch (error) {
-                console.error(`Error fetching or parsing ${type} GeoJSON:`, error);
-                // Optionally, add a user-facing message here
-            }
-        }
+    (async function(){
+      const [districtGeo, assemblyGeo] = await Promise.all([
+        loadGeoJSON('district_V15.geojson'),
+        loadGeoJSON('assembly_V15.geojson')
+      ]);
 
-        // To ensure overlay order, fetch and draw districts before assemblies
-        fetchAndPopulateDropdown('district');
-        fetchAndPopulateDropdown('assembly');
+      const districtChoices = fillChoices(document.getElementById('districtSelect'), districtGeo.features);
+      const assemblyChoices = fillChoices(document.getElementById('assemblySelect'), assemblyGeo.features);
 
-        function drawBoundaries(type) {
-            const selectElement = $(`#${type}-select`);
-            const selectedNames = selectElement.val();
-            const color = document.getElementById(`${type}-color`).value;
-            const transparency = document.getElementById(`${type}-transparency`).value;
+      const dTrans = document.getElementById('districtTrans');
+      const aTrans = document.getElementById('assemblyTrans');
+      const dVal = document.getElementById('districtTransVal');
+      const aVal = document.getElementById('assemblyTransVal');
+      let dOpacity = transparencyToOpacity(dTrans.value);
+      let aOpacity = transparencyToOpacity(aTrans.value);
+      dTrans.addEventListener('input', ()=>{ dVal.textContent=dTrans.value+'%'; dOpacity=transparencyToOpacity(dTrans.value); districtLayerGroup.eachLayer(l=>l.setStyle({fillOpacity:dOpacity})); });
+      aTrans.addEventListener('input', ()=>{ aVal.textContent=aTrans.value+'%'; aOpacity=transparencyToOpacity(aTrans.value); assemblyLayerGroup.eachLayer(l=>l.setStyle({fillOpacity:aOpacity})); });
 
-            if (!selectedNames || selectedNames.length === 0) {
-                return;
-            }
+      document.getElementById('drawDistrict').addEventListener('click', ()=>{
+        const selected = districtChoices.getValue(true);
+        const color = document.getElementById('districtColor').value;
+        drawFeatures(districtGeo.features, selected, color, 'districts', districtLayerGroup, dOpacity);
+      });
+      document.getElementById('clearDistrict').addEventListener('click', ()=> districtLayerGroup.clearLayers());
 
-            if (!geojsonLayers[type]) {
-                console.error(`GeoJSON data for ${type} not loaded.`);
-                return;
-            }
+      document.getElementById('drawAssembly').addEventListener('click', ()=>{
+        const selected = assemblyChoices.getValue(true);
+        const color = document.getElementById('assemblyColor').value;
+        drawFeatures(assemblyGeo.features, selected, color, 'assemblies', assemblyLayerGroup, aOpacity);
+      });
+      document.getElementById('clearAssembly').addEventListener('click', ()=> assemblyLayerGroup.clearLayers());
 
-            const featuresToDraw = geojsonLayers[type].features.filter(feature =>
-                selectedNames.includes(feature.properties.Name)
-            );
+      const tmp = L.geoJSON(districtGeo);
+      map.fitBounds(tmp.getBounds());
+      tmp.remove();
+    })();
 
-            featuresToDraw.forEach(feature => {
-                const layer = L.geoJSON(feature, {
-                    style: {
-                        color: color,
-                        weight: 2,
-                        fillColor: color,
-                        fillOpacity: transparency
-                    },
-                    onEachFeature: function (feature, layer) {
-                        layer.on('click', function (e) {
-                            L.DomEvent.stopPropagation(e);
-                            showPopup(e, layer, type);
-                        });
-                    }
-                });
-
-                layer.addTo(drawnLayers[type]);
-            });
-        }
-
-        function clearBoundaries(type) {
-            drawnLayers[type].clearLayers();
-        }
-
-        function showPopup(e, layer, type) {
-            let color = layer.options.style.color;
-            let fillOpacity = layer.options.style.fillOpacity;
-            const popupContent = `
-                <b>${layer.feature.properties.Name}</b><br>
-                <p>Customize Boundary:</p>
-                <label>Outline Color:</label> <input type="color" id="popup-outline-color" value="${color}"><br>
-                <label>Fill Color:</label> <input type="color" id="popup-fill-color" value="${layer.options.style.fillColor}"><br>
-                <label>Thickness:</label> <input type="range" id="popup-thickness" min="1" max="10" value="${layer.options.style.weight}"><br>
-                <label>Fill Transparency:</label> <input type="range" id="popup-transparency" min="0" max="1" step="0.01" value="${fillOpacity}"><br>
-                <button onclick="applyPopupCustomization('${type}')">Apply</button>
-            `;
-
-            const popup = L.popup()
-                .setLatLng(e.latlng)
-                .setContent(popupContent)
-                .openOn(map);
-
-            popup.on('remove', function () {
-                activePopupLayer = null;
-            });
-
-            activePopupLayer = layer;
-        }
-
-        let activePopupLayer = null;
-
-        function applyPopupCustomization(type) {
-            if (activePopupLayer) {
-                const outlineColor = document.getElementById('popup-outline-color').value;
-                const fillColor = document.getElementById('popup-fill-color').value;
-                const thickness = document.getElementById('popup-thickness').value;
-                const transparency = document.getElementById('popup-transparency').value;
-                activePopupLayer.setStyle({
-                    color: outlineColor,
-                    fillColor: fillColor,
-                    weight: thickness,
-                    fillOpacity: transparency
-                });
-                map.closePopup();
-            }
-        }
-    </script>
+    const sidebar = document.getElementById('sidebar');
+    const toggleBtn = document.getElementById('toggleBtn');
+    toggleBtn.addEventListener('click', ()=> sidebar.classList.toggle('open'));
+  </script>
 </body>
-
 </html>
+
+
