@@ -43,6 +43,8 @@
             left: 10px;
             z-index: 1000;
             width: 350px;
+            max-height: calc(100vh - 20px);
+            overflow-y: auto;
             background: rgba(255, 255, 255, 0.9);
             padding: 20px;
             border-radius: 8px;
@@ -69,7 +71,7 @@
 </head>
 <body>
 
-    <div id="version-number">v1.0</div>
+    <div id="version-number">v1.1</div>
 
     <div id="map"></div>
     
@@ -134,7 +136,7 @@
     
     <script>
         // Store the version number as a comment in the code
-        // Version Number: 1.0
+        // Version Number: 1.1
 
         // Initialize the map centered on Kerala
         const map = L.map('map').setView([10.8505, 76.2711], 8);
@@ -177,7 +179,7 @@
         fetchAndPopulate('assembly_V15.geojson', 'assembly-select');
         fetchAndPopulate('district_V15.geojson', 'district-select');
         
-        // Function to draw a GeoJSON layer
+        // Function to draw a GeoJSON layer with hover effect
         function drawBoundaries(type) {
             const selectId = `${type}-select`;
             const colorPickerId = `${type}-color-picker`;
@@ -195,7 +197,26 @@
 
             // Clear existing layers for this type
             clearBoundaries(type);
+
+            // Define the default style for the boundaries
+            const defaultStyle = {
+                color: color,
+                weight: 2,
+                fillColor: color,
+                fillOpacity: 1 - transparency,
+                opacity: 1
+            };
+
+            // Define the style for the hover effect
+            const highlightStyle = {
+                weight: 5,
+                color: '#ff7800',
+                fillColor: '#ff7800',
+                fillOpacity: 0.7,
+                opacity: 1
+            };
             
+
             // Loop through selected names and draw each boundary
             selectedNames.forEach(name => {
                 const filteredData = {
@@ -205,19 +226,26 @@
 
                 const layer = L.geoJSON(filteredData, {
                     style: function(feature) {
-                        return {
-                            color: color,
-                            weight: 2,
-                            fillColor: color,
-                            fillOpacity: 1 - transparency, // Invert transparency value for fillOpacity
-                            opacity: 1
-                        };
+                        return defaultStyle;
                     },
                     onEachFeature: function(feature, layer) {
-                        // Optional: Add a popup with the name
+                        // Add a popup with the name
                         if (feature.properties && feature.properties.Name) {
                             layer.bindPopup(feature.properties.Name);
                         }
+
+                        // Add mouse events for hover effect
+                        layer.on({
+                            mouseover: function(e) {
+                                e.target.setStyle(highlightStyle);
+                                if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+                                    e.target.bringToFront();
+                                }
+                            },
+                            mouseout: function(e) {
+                                e.target.setStyle(defaultStyle);
+                            }
+                        });
                     }
                 }).addTo(drawnLayers[type]);
             });
