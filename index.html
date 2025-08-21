@@ -1,287 +1,346 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kerala Administrative Divisions</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-        integrity="sha20-bLeWqB5m/uM1v9i8tXn4+t3E5V/2xK+2+X4tP2d5r+g=" crossorigin="" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-search@2.9.8/dist/leaflet-search.min.css" />
+    <title>Kerala Administrative Boundaries</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p418mtO1p5+q9oD5sX069X6V3n8x5z5b9s6J6z9L8z0=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-2Bq+gR7wXgG7L+g5L6T5X069X6V3n8x5z5b9s6J6z9L8z0=" crossorigin=""></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.css">
+    <script src="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-extra-markers@1.0.10/dist/css/leaflet.extra-markers.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/leaflet-extra-markers@1.0.10/dist/js/leaflet.extra-markers.min.js"></script>
+
     <style>
-        body {
-            font-family: Arial, sans-serif;
+        body, html {
             margin: 0;
             padding: 0;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
+            width: 100%;
+            height: 100%;
+            font-family: Arial, sans-serif;
             overflow: hidden;
         }
-
         #map {
-            flex-grow: 1;
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
         }
-
-        #version-info {
-            position: fixed;
+        #sidebar {
+            position: absolute;
             top: 10px;
             right: 10px;
-            z-index: 1000;
-            background-color: white;
-            padding: 5px 10px;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-            font-size: 0.8em;
-        }
-
-        .controls {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            z-index: 1000;
+            width: 300px;
+            max-height: calc(100% - 20px);
             background-color: white;
             padding: 15px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            z-index: 1000;
             border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 20px;
         }
-
-        .control-panel {
-            border: 1px solid #ccc;
-            padding: 10px;
-            border-radius: 5px;
+        .version-number {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 12px;
+            color: #555;
+            z-index: 1001;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 5px 8px;
+            border-radius: 4px;
         }
-
-        .control-panel h3 {
+        .panel {
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+        .panel h3 {
             margin-top: 0;
-            font-size: 1.1em;
-        }
-
-        .input-group {
             margin-bottom: 10px;
+            font-size: 18px;
+            color: #333;
         }
-
-        label {
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
             display: block;
             margin-bottom: 5px;
             font-weight: bold;
         }
-
-        select,
-        input[type="color"],
-        input[type="range"],
-        button {
+        .input-container {
+            position: relative;
+        }
+        .search-input {
             width: 100%;
             padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
             box-sizing: border-box;
         }
-
-        button {
+        .dropdown {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            border-top: none;
+            position: absolute;
+            width: 100%;
+            background-color: white;
+            z-index: 10;
+            display: none;
+        }
+        .dropdown-item {
+            padding: 8px;
             cursor: pointer;
-            background-color: #007bff;
-            color: white;
+        }
+        .dropdown-item:hover {
+            background-color: #f1f1f1;
+        }
+        .color-picker-container {
+            display: flex;
+            align-items: center;
+        }
+        .color-picker {
+            width: 40px;
+            height: 25px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-left: 10px;
+            cursor: pointer;
+        }
+        .button-group {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            gap: 10px;
+        }
+        .button-group button {
+            flex-grow: 1;
+            padding: 10px;
             border: none;
             border-radius: 4px;
-            transition: background-color 0.3s;
+            cursor: pointer;
+            font-weight: bold;
         }
-
-        button:hover {
-            background-color: #0056b3;
+        .button-group .draw-btn {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .button-group .clear-btn {
+            background-color: #f44336;
+            color: white;
         }
     </style>
 </head>
-
 <body>
-    <svg style="position: absolute; width: 0; height: 0;">
-        <defs>
-            <pattern id="slanted-lines" patternUnits="userSpaceOnUse" width="10" height="10"
-                patternTransform="rotate(45)">
-                <line x1="0" y1="0" x2="0" y2="10" stroke="#000000" stroke-width="2" />
-            </pattern>
-        </defs>
-    </svg>
 
-    <div id="version-info">Version: 1.0.0</div>
     <div id="map"></div>
-    <div class="controls">
-        <div class="control-panel" id="district-panel">
+    <div id="sidebar">
+        <div class="version-number">Version: 1.0.0</div>
+        
+        <div class="panel" id="district-panel">
             <h3>Districts</h3>
-            <div class="input-group">
-                <label for="district-select">Select District:</label>
-                <select id="district-select" multiple="multiple"></select>
+            <div class="form-group">
+                <label for="district-search">Select District:</label>
+                <div class="input-container">
+                    <input type="text" id="district-search" class="search-input" placeholder="Search for a district...">
+                    <div id="district-dropdown" class="dropdown"></div>
+                </div>
             </div>
-            <div class="input-group">
+            <div class="form-group">
                 <label for="district-color">Boundary Color:</label>
-                <input type="color" id="district-color" value="#000000">
+                <div class="color-picker-container">
+                    <input type="color" id="district-color" value="#000000">
+                </div>
             </div>
-            <div class="input-group">
+            <div class="form-group">
                 <label for="district-transparency">Fill Transparency:</label>
-                <input type="range" id="district-transparency" min="0" max="1" step="0.01" value="1">
+                <input type="range" id="district-transparency" min="0" max="1" step="0.01" value="0.5">
             </div>
-            <button id="draw-district">Draw</button>
-            <button id="clear-district">Clear</button>
+            <div class="button-group">
+                <button class="draw-btn" id="draw-district-btn">Draw</button>
+                <button class="clear-btn" id="clear-district-btn">Clear</button>
+            </div>
         </div>
 
-        <div class="control-panel" id="assembly-panel">
+        <div class="panel" id="assembly-panel">
             <h3>Assemblies</h3>
-            <div class="input-group">
-                <label for="assembly-select">Select Assembly:</label>
-                <select id="assembly-select" multiple="multiple"></select>
+            <div class="form-group">
+                <label for="assembly-search">Select Assembly:</label>
+                <div class="input-container">
+                    <input type="text" id="assembly-search" class="search-input" placeholder="Search for an assembly...">
+                    <div id="assembly-dropdown" class="dropdown"></div>
+                </div>
             </div>
-            <div class="input-group">
-                <label for="assembly-fill-type">Fill Type:</label>
-                <select id="assembly-fill-type">
-                    <option value="color">Solid Color</option>
-                    <option value="pattern">Pattern</option>
-                </select>
-            </div>
-            <div class="input-group">
+            <div class="form-group">
                 <label for="assembly-color">Boundary Color:</label>
-                <input type="color" id="assembly-color" value="#000000">
+                <div class="color-picker-container">
+                    <input type="color" id="assembly-color" value="#000000">
+                </div>
             </div>
-            <div class="input-group">
+            <div class="form-group">
                 <label for="assembly-transparency">Fill Transparency:</label>
-                <input type="range" id="assembly-transparency" min="0" max="1" step="0.01" value="1">
+                <input type="range" id="assembly-transparency" min="0" max="1" step="0.01" value="0.5">
             </div>
-            <button id="draw-assembly">Draw</button>
-            <button id="clear-assembly">Clear</button>
-        </div>
-
-        <div class="control-panel">
-            <h3>Base Maps</h3>
-            <div class="input-group">
-                <label for="base-map-select">Select Base Map:</label>
-                <select id="base-map-select">
-                    <option value="osm">OpenStreetMap</option>
-                    <option value="none">None</option>
-                </select>
+            <div class="button-group">
+                <button class="draw-btn" id="draw-assembly-btn">Draw</button>
+                <button class="clear-btn" id="clear-assembly-btn">Clear</button>
             </div>
         </div>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-        integrity="sha20-z9w8+0pB8n/fPzJ7Qe3z6rF09w+P7k7r+G9/r+G9/r+w/g=" crossorigin=""></script>
-    <script src="https://unpkg.com/jquery@3.6.0/dist/jquery.min.js"></script>
-    <script src="https://unpkg.com/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <link href="https://unpkg.com/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-
     <script>
-        const version = "1.0.0";
-        document.getElementById('version-info').innerText = `Version: ${version}`;
+        document.addEventListener('DOMContentLoaded', () => {
+            const version = "1.0.0";
+            document.querySelector('.version-number').textContent = `Version: ${version}`;
 
-        const map = L.map('map').setView([10.8505, 76.2711], 8);
+            // Initialize the map
+            const map = L.map('map').setView([10.5276, 76.2144], 8);
 
-        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        }).addTo(map);
-
-        let currentBaseMap = osmLayer;
-
-        const baseMapSelect = document.getElementById('base-map-select');
-        baseMapSelect.addEventListener('change', (e) => {
-            if (currentBaseMap) {
-                map.removeLayer(currentBaseMap);
-            }
-            if (e.target.value === 'osm') {
-                currentBaseMap = osmLayer.addTo(map);
-            } else if (e.target.value === 'none') {
-                currentBaseMap = null;
-            }
-        });
-
-        const drawnLayers = {
-            district: L.geoJSON().addTo(map),
-            assembly: L.geoJSON().addTo(map)
-        };
-
-        const geojsonCache = {};
-
-        async function loadGeoJSON(type) {
-            if (geojsonCache[type]) {
-                return geojsonCache[type];
-            }
-            try {
-                const response = await fetch(`${type}_V15.geojson`);
-                const data = await response.json();
-                geojsonCache[type] = data;
-                return data;
-            } catch (error) {
-                console.error(`Error loading GeoJSON for ${type}:`, error);
-                return null;
-            }
-        }
-
-        function setupSelect2(selectId, data) {
-            $(`#${selectId}`).select2({
-                data: data.features.map(f => ({
-                    id: f.properties.Name,
-                    text: f.properties.Name
-                })),
-                placeholder: 'Search and select...',
-                allowClear: true
+            // Base maps
+            const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             });
-        }
 
-        async function init() {
-            const districtData = await loadGeoJSON('district');
-            if (districtData) {
-                setupSelect2('district-select', districtData);
-            }
+            const topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+                attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
+            });
 
-            const assemblyData = await loadGeoJSON('assembly');
-            if (assemblyData) {
-                setupSelect2('assembly-select', assemblyData);
-            }
-        }
+            const noBasemap = L.layerGroup();
 
-        function getStyle(color, transparency, fillType) {
-            let style = {
-                weight: 2,
-                opacity: 1,
-                color: 'black',
-                fillOpacity: transparency
+            const baseMaps = {
+                "OpenStreetMap": osm,
+                "OpenTopoMap": topo,
+                "No Basemap": noBasemap
             };
 
-            if (fillType === 'pattern') {
-                style.fillColor = `url(#slanted-lines)`;
-            } else {
-                style.fillColor = color;
-            }
+            osm.addTo(map);
+            L.control.layers(baseMaps).addTo(map);
 
-            return style;
-        }
+            const layers = {
+                'district': new L.LayerGroup().addTo(map),
+                'assembly': new L.LayerGroup().addTo(map)
+            };
 
-        function drawBoundaries(type) {
-            const selectedNames = $(`#${type}-select`).val();
-            const color = document.getElementById(`${type}-color`).value;
-            const transparency = document.getElementById(`${type}-transparency`).value;
-            const geojson = geojsonCache[type];
-            const fillType = (type === 'assembly') ? document.getElementById(`${type}-fill-type`).value : 'color';
+            const data = {
+                district: [],
+                assembly: []
+            };
 
-            if (!geojson || !selectedNames || selectedNames.length === 0) {
-                return;
-            }
+            // Debounce function to limit API calls on search input
+            const debounce = (func, delay) => {
+                let timeout;
+                return function(...args) {
+                    const context = this;
+                    clearTimeout(timeout);
+                    timeout = setTimeout(() => func.apply(context, args), delay);
+                };
+            };
 
-            const featuresToDraw = geojson.features.filter(f => selectedNames.includes(f.properties.Name));
+            const setupPanel = (type) => {
+                const searchInput = document.getElementById(`${type}-search`);
+                const dropdown = document.getElementById(`${type}-dropdown`);
+                const drawBtn = document.getElementById(`draw-${type}-btn`);
+                const clearBtn = document.getElementById(`clear-${type}-btn`);
+                const colorInput = document.getElementById(`${type}-color`);
+                const transparencyInput = document.getElementById(`${type}-transparency`);
+                let selectedFeature = null;
 
-            drawnLayers[type].clearLayers();
-            L.geoJSON(featuresToDraw, {
-                style: () => getStyle(color, transparency, fillType)
-            }).addTo(drawnLayers[type]);
-        }
+                const filterAndShowDropdown = () => {
+                    const filterValue = searchInput.value.toLowerCase();
+                    dropdown.innerHTML = '';
+                    const filteredData = data[type].filter(feature => 
+                        feature.properties.Name && feature.properties.Name.toLowerCase().includes(filterValue)
+                    );
+                    if (filteredData.length > 0 && searchInput.value.length > 0) {
+                        filteredData.forEach(feature => {
+                            const item = document.createElement('div');
+                            item.className = 'dropdown-item';
+                            item.textContent = feature.properties.Name;
+                            item.addEventListener('click', () => {
+                                searchInput.value = feature.properties.Name;
+                                selectedFeature = feature;
+                                dropdown.style.display = 'none';
+                            });
+                            dropdown.appendChild(item);
+                        });
+                        dropdown.style.display = 'block';
+                    } else {
+                        dropdown.style.display = 'none';
+                    }
+                };
 
-        document.getElementById('draw-district').addEventListener('click', () => drawBoundaries('district'));
-        document.getElementById('draw-assembly').addEventListener('click', () => drawBoundaries('assembly'));
+                const debouncedFilter = debounce(filterAndShowDropdown, 300);
+                searchInput.addEventListener('input', debouncedFilter);
 
-        document.getElementById('clear-district').addEventListener('click', () => drawnLayers.district.clearLayers());
-        document.getElementById('clear-assembly').addEventListener('click', () => drawnLayers.assembly.clearLayers());
+                searchInput.addEventListener('focus', () => {
+                    if (searchInput.value.length === 0) {
+                        filterAndShowDropdown();
+                    }
+                });
 
-        init();
+                document.addEventListener('click', (event) => {
+                    if (!searchInput.parentNode.contains(event.target)) {
+                        dropdown.style.display = 'none';
+                    }
+                });
+
+                drawBtn.addEventListener('click', () => {
+                    if (selectedFeature) {
+                        const featureName = selectedFeature.properties.Name;
+                        const geojsonLayer = L.geoJSON(selectedFeature, {
+                            style: (feature) => {
+                                const transparency = parseFloat(transparencyInput.value);
+                                const color = colorInput.value;
+                                return {
+                                    fillColor: color,
+                                    fillOpacity: transparency,
+                                    color: color,
+                                    weight: 3,
+                                    opacity: 1
+                                };
+                            }
+                        });
+                        geojsonLayer.addTo(layers[type]);
+                        map.fitBounds(geojsonLayer.getBounds());
+                        searchInput.value = '';
+                        selectedFeature = null;
+                        dropdown.style.display = 'none';
+                    } else {
+                        alert(`Please select a ${type} from the dropdown.`);
+                    }
+                });
+
+                clearBtn.addEventListener('click', () => {
+                    layers[type].clearLayers();
+                });
+            };
+
+            // Load GeoJSON data and set up panels
+            Promise.all([
+                fetch('district_V15.geojson').then(res => res.json()),
+                fetch('assembly_V15.geojson').then(res => res.json())
+            ]).then(([districtData, assemblyData]) => {
+                data.district = districtData.features;
+                data.assembly = assemblyData.features;
+                setupPanel('district');
+                setupPanel('assembly');
+            }).catch(error => {
+                console.error("Error loading GeoJSON files:", error);
+                alert("Failed to load map data. Please ensure the GeoJSON files are in the repository.");
+            });
+
+            // Set layer hierarchy
+            layers.district.bringToFront();
+            layers.assembly.bringToFront();
+        });
     </script>
-</body>
 
+</body>
 </html>
