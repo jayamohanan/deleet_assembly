@@ -1,4 +1,7 @@
-<!-- district-map.html with assembly option -->
+<!--
+  NOTE: Update the version number below every time you make changes to this file.
+  Example: v1.0, v1.1, etc.
+-->
 <!doctype html>
 <html lang="en">
 <head>
@@ -9,12 +12,14 @@
   <style>
     html,body{height:100%;margin:0;font-family:system-ui,Arial}
     #app{display:flex;flex-direction:column;height:100%}
-    header{padding:12px;background:#0b5;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+    header{padding:12px;background:#0b5;display:flex;flex-wrap:wrap;gap:8px;align-items:center;position:relative}
     input[type=text]{padding:8px;border-radius:6px;border:1px solid #ccc;min-width:180px}
     button{padding:8px 12px;border-radius:6px;border:none;background:#075;color:white;cursor:pointer}
+    label{margin-right:4px}
     #status{margin-left:8px;font-size:0.95rem;color:#080}
     #map{flex:1}
     #note{padding:6px 12px;color:#900;white-space:pre-line}
+    #version{position:absolute;right:12px;top:12px;font-size:0.85rem;color:#fff;background:#333;padding:4px 8px;border-radius:6px}
   </style>
 </head>
 <body>
@@ -25,14 +30,19 @@
         <input id="districtInput" list="districtList" placeholder="District name">
         <datalist id="districtList"></datalist>
         <button id="drawDistrictBtn">Draw District</button>
+        <label>Color:<input type="color" id="districtColor" value="#ff0000"></label>
+        <label>Transparency:<input type="range" id="districtOpacity" min="0" max="1" step="0.1" value="0.2"></label>
       </div>
       <div>
         <label for="assemblyInput">Assembly:</label>
         <input id="assemblyInput" list="assemblyList" placeholder="Assembly name">
         <datalist id="assemblyList"></datalist>
         <button id="drawAssemblyBtn">Draw Assembly</button>
+        <label>Color:<input type="color" id="assemblyColor" value="#ff0000"></label>
+        <label>Transparency:<input type="range" id="assemblyOpacity" min="0" max="1" step="0.1" value="0.2"></label>
       </div>
       <div id="status"></div>
+      <div id="version">v1.1</div>
     </header>
     <div id="map"></div>
     <div id="note"></div>
@@ -51,15 +61,20 @@
 
     let geoDistrict = null;
     let geoAssembly = null;
-    let currentLayer = null;
+    let districtLayer = null;
+    let assemblyLayer = null;
 
     const districtInput = document.getElementById('districtInput');
     const districtList = document.getElementById('districtList');
     const drawDistrictBtn = document.getElementById('drawDistrictBtn');
+    const districtColor = document.getElementById('districtColor');
+    const districtOpacity = document.getElementById('districtOpacity');
 
     const assemblyInput = document.getElementById('assemblyInput');
     const assemblyList = document.getElementById('assemblyList');
     const drawAssemblyBtn = document.getElementById('drawAssemblyBtn');
+    const assemblyColor = document.getElementById('assemblyColor');
+    const assemblyOpacity = document.getElementById('assemblyOpacity');
 
     const status = document.getElementById('status');
     const note = document.getElementById('note');
@@ -78,8 +93,8 @@
       geoDistrict = djson;
       geoAssembly = ajson;
       status.textContent = 'GeoJSON loaded.';
-      populateDatalist(geoDistrict,districtList);
-      populateDatalist(geoAssembly,assemblyList);
+      populateDatalist(geoDistrict,districtList, true);
+      populateDatalist(geoAssembly,assemblyList, true);
     }).catch(err=>{
       logMessage('Error loading geojson: '+err.message,true);
       console.error(err);
@@ -102,13 +117,14 @@
       return null;
     }
 
-    function populateDatalist(geojson, listElem){
+    function populateDatalist(geojson, listElem, addNoMap=false){
       const names = new Set();
       if(!geojson.features) return;
       for(const f of geojson.features){
         const n = getFeatureName(f);
         if(n) names.add(n);
       }
+      if(addNoMap) names.add('no map');
       Array.from(names).sort().forEach(n=>{
         const opt=document.createElement('option');
         opt.value=n;
@@ -116,46 +132,50 @@
       });
     }
 
-    function highlightFeatures(query, geojson, label){
+    function drawLayer(query, geojson, layerVarName, color, opacity, label){
+      if(query.toLowerCase() === 'no map'){
+        if(window[layerVarName]){
+          map.removeLayer(window[layerVarName]);
+          window[layerVarName] = null;
+          logMessage(label+' map removed.');
+        } else {
+          logMessage(label+' map already not present.');
+        }
+        return;
+      }
       if(!geojson){ logMessage(label+' GeoJSON not loaded.',true); return; }
-      if(currentLayer) map.removeLayer(currentLayer);
 
       const matched = geojson.features.filter(f => {
         const n = getFeatureName(f);
         return n && n.toLowerCase() === query.toLowerCase();
       });
+      if(matched.length === 0){ logMessage('No '+label+' found for: '+query,true); return; }
 
-      if(matched.length === 0){
-        logMessage('No '+label+' found for: '+query,true);
-        return;
-      }
+      if(window[layerVarName]) map.removeLayer(window[layerVarName]);
 
-      currentLayer = L.geoJSON(matched, {
-        style: {color: '#cc3300', weight: 2, fillColor: '#ff9966', fillOpacity: 0.45},
+      window[layerVarName] = L.geoJSON(matched, {
+        style: {color: color, weight: 2, fillColor: color, fillOpacity: opacity},
         onEachFeature: (feature, layer)=>{
           const n = getFeatureName(feature) || 'Unknown';
           layer.bindPopup('<b>'+label+': '+n+'</b>');
         }
       }).addTo(map);
-
-      map.fitBounds(currentLayer.getBounds().pad(0.1));
-      logMessage('Highlighted '+label+': '+query);
+      map.fitBounds(window[layerVarName].getBounds().pad(0.1));
+      logMessage(label+' drawn: '+query);
     }
 
-    drawDistrictBtn.addEventListener('click',()=>{
-      const q=districtInput.value.trim();
-      if(!q){ logMessage('Enter a district name.',true); return; }
-      highlightFeatures(q,geoDistrict,'District');
+    drawDistrictBtn.addEventListener('click', ()=>{
+      const q = districtInput.value.trim();
+      drawLayer(q, geoDistrict, 'districtLayer', districtColor.value, parseFloat(districtOpacity.value), 'District');
     });
 
-    drawAssemblyBtn.addEventListener('click',()=>{
-      const q=assemblyInput.value.trim();
-      if(!q){ logMessage('Enter an assembly name.',true); return; }
-      highlightFeatures(q,geoAssembly,'Assembly');
+    drawAssemblyBtn.addEventListener('click', ()=>{
+      const q = assemblyInput.value.trim();
+      drawLayer(q, geoAssembly, 'assemblyLayer', assemblyColor.value, parseFloat(assemblyOpacity.value), 'Assembly');
     });
 
-    districtInput.addEventListener('keydown',e=>{if(e.key==='Enter')drawDistrictBtn.click();});
-    assemblyInput.addEventListener('keydown',e=>{if(e.key==='Enter')drawAssemblyBtn.click();});
+    districtInput.addEventListener('keydown', e=>{if(e.key==='Enter') drawDistrictBtn.click();});
+    assemblyInput.addEventListener('keydown', e=>{if(e.key==='Enter') drawAssemblyBtn.click();});
 
     if(location.protocol==='file:'){
       logMessage('Tip: run a local server (python -m http.server) if geojson fails to load.',false);
