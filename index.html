@@ -1,4 +1,6 @@
-<!-- REMINDER: Update the version number below whenever you make changes to this file -->
+<!-- Kerala Local Bodies Map -->
+<!-- VERSION 1.6 -->
+<!-- Reminder: Please increment the version number above every time you update this file -->
 
 <!DOCTYPE html>
 <html>
@@ -6,107 +8,152 @@
   <title>Kerala Local Bodies Map</title>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
     body { margin: 0; padding: 0; }
-    #map { width: 100%; height: 100vh; }
-    .controls {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      z-index: 1000;
-      background: white;
+    #map { width: 100%; height: 90vh; }
+
+    #controls {
       padding: 10px;
-      border-radius: 8px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      background: #f9f9f9;
+      border-bottom: 1px solid #ccc;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .control-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .control-row label {
+      font-size: 14px;
+      font-weight: bold;
+    }
+
+    .control-row input[type="text"],
+    .control-row input[type="color"],
+    .control-row input[type="range"] {
+      padding: 4px;
       font-size: 14px;
     }
-    .version {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background: rgba(255,255,255,0.8);
-      padding: 5px 10px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: bold;
+
+    .control-row input[type="text"] {
+      width: 160px;
+    }
+
+    .control-row input[type="range"] {
+      width: 120px;
     }
   </style>
 </head>
 <body>
-  <div id="map"></div>
-  <div class="controls">
-    <h4>Map Controls</h4>
 
-    <label>District Boundary Color:
-      <input type="color" id="districtColor" value="#FF0000">
-    </label><br>
-    <label>District Transparency:
-      <input type="range" id="districtOpacity" min="0" max="1" step="0.1" value="0.2">
-    </label><br><br>
-
-    <label>Assembly Boundary Color:
-      <input type="color" id="assemblyColor" value="#0000FF">
-    </label><br>
-    <label>Assembly Transparency:
-      <input type="range" id="assemblyOpacity" min="0" max="1" step="0.1" value="0.2">
-    </label>
+<div id="controls">
+  <div class="control-row">
+    <label>District Name:</label>
+    <input type="text" id="districtName" placeholder="Enter district name">
+    <label>Boundary Color:</label>
+    <input type="color" id="districtColor" value="#3388ff">
+    <label>Transparency:</label>
+    <input type="range" id="districtOpacity" min="0" max="1" step="0.1" value="0.2">
   </div>
 
-  <div class="version">Version: V15</div>
+  <div class="control-row">
+    <label>Assembly Name:</label>
+    <input type="text" id="assemblyName" placeholder="Enter assembly name">
+    <label>Boundary Color:</label>
+    <input type="color" id="assemblyColor" value="#ff3333">
+    <label>Transparency:</label>
+    <input type="range" id="assemblyOpacity" min="0" max="1" step="0.1" value="0.2">
+  </div>
+</div>
 
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script>
-    var map = L.map('map').setView([10.35, 76.27], 7);
+<div id="map"></div>
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19
-    }).addTo(map);
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+  const map = L.map('map').setView([10.35, 76.27], 8);
 
-    var districtLayer, assemblyLayer;
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap'
+  }).addTo(map);
 
-    function styleDistrict(feature) {
-      return {
-        color: document.getElementById('districtColor').value,
-        weight: 2,
-        fillOpacity: document.getElementById('districtOpacity').value
-      };
-    }
+  // Load GeoJSON files
+  let districtLayer, assemblyLayer;
 
-    function styleAssembly(feature) {
-      return {
-        color: document.getElementById('assemblyColor').value,
-        weight: 1.5,
-        fillOpacity: document.getElementById('assemblyOpacity').value
-      };
-    }
-
-    fetch('district_V15.geojson')
-      .then(res => res.json())
-      .then(data => {
-        districtLayer = L.geoJSON(data, { style: styleDistrict }).addTo(map);
-      });
-
-    fetch('assembly_V15.geojson')
-      .then(res => res.json())
-      .then(data => {
-        assemblyLayer = L.geoJSON(data, { style: styleAssembly }).addTo(map);
-      });
-
-    // Update styles dynamically
-    document.getElementById('districtColor').addEventListener('input', () => {
-      districtLayer.setStyle(styleDistrict);
-    });
-    document.getElementById('districtOpacity').addEventListener('input', () => {
-      districtLayer.setStyle(styleDistrict);
+  fetch('district_V15.geojson')
+    .then(res => res.json())
+    .then(data => {
+      districtLayer = L.geoJSON(data, {
+        style: {
+          color: document.getElementById('districtColor').value,
+          weight: 2,
+          opacity: 1,
+          fillOpacity: document.getElementById('districtOpacity').value
+        },
+        onEachFeature: (feature, layer) => {
+          layer.bindPopup("District: " + feature.properties.Name);
+        }
+      }).addTo(map);
     });
 
-    document.getElementById('assemblyColor').addEventListener('input', () => {
-      assemblyLayer.setStyle(styleAssembly);
+  fetch('assembly_V15.geojson')
+    .then(res => res.json())
+    .then(data => {
+      assemblyLayer = L.geoJSON(data, {
+        style: {
+          color: document.getElementById('assemblyColor').value,
+          weight: 2,
+          opacity: 1,
+          fillOpacity: document.getElementById('assemblyOpacity').value
+        },
+        onEachFeature: (feature, layer) => {
+          layer.bindPopup("Assembly: " + feature.properties.Name);
+        }
+      }).addTo(map);
     });
-    document.getElementById('assemblyOpacity').addEventListener('input', () => {
-      assemblyLayer.setStyle(styleAssembly);
+
+  // Controls
+  document.getElementById('districtColor').addEventListener('input', e => {
+    if (districtLayer) districtLayer.setStyle({ color: e.target.value });
+  });
+  document.getElementById('districtOpacity').addEventListener('input', e => {
+    if (districtLayer) districtLayer.setStyle({ fillOpacity: e.target.value });
+  });
+
+  document.getElementById('assemblyColor').addEventListener('input', e => {
+    if (assemblyLayer) assemblyLayer.setStyle({ color: e.target.value });
+  });
+  document.getElementById('assemblyOpacity').addEventListener('input', e => {
+    if (assemblyLayer) assemblyLayer.setStyle({ fillOpacity: e.target.value });
+  });
+
+  // Search by name
+  document.getElementById('districtName').addEventListener('change', e => {
+    const name = e.target.value.toLowerCase();
+    districtLayer.eachLayer(layer => {
+      if (layer.feature.properties.Name.toLowerCase() === name) {
+        map.fitBounds(layer.getBounds());
+        layer.openPopup();
+      }
     });
-  </script>
+  });
+
+  document.getElementById('assemblyName').addEventListener('change', e => {
+    const name = e.target.value.toLowerCase();
+    assemblyLayer.eachLayer(layer => {
+      if (layer.feature.properties.Name.toLowerCase() === name) {
+        map.fitBounds(layer.getBounds());
+        layer.openPopup();
+      }
+    });
+  });
+</script>
 </body>
 </html>
