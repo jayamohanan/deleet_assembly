@@ -71,13 +71,27 @@
 </head>
 <body>
 
-    <div id="version-number">v1.1</div>
+    <div id="version-number">v1.2</div>
 
     <div id="map"></div>
     
 
     <div class="controls-panel">
         
+        <div class="control-group">
+            <h5 class="text-secondary">Base Map</h5>
+            <div class="mb-3">
+                <label for="basemap-select" class="form-label">Select Base Map:</label>
+                <select id="basemap-select" class="form-select">
+                    <option value="osm">OpenStreetMap (Default)</option>
+                    <option value="satellite">ESRI Satellite</option>
+                    <option value="light">CartoDB Positron</option>
+                    <option value="dark">CartoDB Dark Matter</option>
+                    <option value="none">No Base Map</option>
+                </select>
+            </div>
+        </div>
+
         <div class="control-group">
             <h5 class="text-primary">Assembly Boundaries</h5>
             
@@ -136,13 +150,29 @@
     
     <script>
         // Store the version number as a comment in the code
-        // Version Number: 1.1
+        // Version Number: 1.2
 
         // Initialize the map centered on Kerala
         const map = L.map('map').setView([10.8505, 76.2711], 8);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
+        
+        // Define base map layers
+        const basemaps = {
+            'osm': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }),
+            'satellite': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'ESRI World Imagery'
+            }),
+            'light': L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '©CartoDB'
+            }),
+            'dark': L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '©CartoDB'
+            })
+        };
+
+        // Add default base map to the map
+        let currentBasemap = basemaps.osm.addTo(map);
 
         // Store drawn layers
         const drawnLayers = {
@@ -166,8 +196,7 @@
                 $(`#${selectId}`).select2({
                     data: options,
                     placeholder: `Select ${selectId.replace('-select', '')} name(s)`,
-                    tags: true,
-                    tokenSeparators: [',']
+                    tags: false // Changed to 'false' as requested
                 });
                 
                 // Store the full GeoJSON data for later use
@@ -179,7 +208,7 @@
         fetchAndPopulate('assembly_V15.geojson', 'assembly-select');
         fetchAndPopulate('district_V15.geojson', 'district-select');
         
-        // Function to draw a GeoJSON layer with hover effect
+        // Function to draw a GeoJSON layer
         function drawBoundaries(type) {
             const selectId = `${type}-select`;
             const colorPickerId = `${type}-color-picker`;
@@ -197,25 +226,15 @@
 
             // Clear existing layers for this type
             clearBoundaries(type);
-
-            // Define the default style for the boundaries
-            const defaultStyle = {
+            
+            // Define the style for the boundaries
+            const boundaryStyle = {
                 color: color,
                 weight: 2,
                 fillColor: color,
-                fillOpacity: 1 - transparency,
+                fillOpacity: 1 - transparency, // Invert transparency value for fillOpacity
                 opacity: 1
             };
-
-            // Define the style for the hover effect
-            const highlightStyle = {
-                weight: 5,
-                color: '#ff7800',
-                fillColor: '#ff7800',
-                fillOpacity: 0.7,
-                opacity: 1
-            };
-            
 
             // Loop through selected names and draw each boundary
             selectedNames.forEach(name => {
@@ -226,26 +245,13 @@
 
                 const layer = L.geoJSON(filteredData, {
                     style: function(feature) {
-                        return defaultStyle;
+                        return boundaryStyle;
                     },
                     onEachFeature: function(feature, layer) {
-                        // Add a popup with the name
+                        // Optional: Add a popup with the name
                         if (feature.properties && feature.properties.Name) {
                             layer.bindPopup(feature.properties.Name);
                         }
-
-                        // Add mouse events for hover effect
-                        layer.on({
-                            mouseover: function(e) {
-                                e.target.setStyle(highlightStyle);
-                                if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
-                                    e.target.bringToFront();
-                                }
-                            },
-                            mouseout: function(e) {
-                                e.target.setStyle(defaultStyle);
-                            }
-                        });
                     }
                 }).addTo(drawnLayers[type]);
             });
@@ -258,6 +264,21 @@
         function clearBoundaries(type) {
             drawnLayers[type].clearLayers();
         }
+
+        // Event listener for basemap selection
+        $('#basemap-select').on('change', function() {
+            const selectedBasemap = $(this).val();
+            
+            // Remove the current basemap from the map
+            if (currentBasemap) {
+                map.removeLayer(currentBasemap);
+            }
+            
+            // Add the new basemap if one is selected
+            if (selectedBasemap !== 'none') {
+                currentBasemap = basemaps[selectedBasemap].addTo(map);
+            }
+        });
 
         // Event listeners for "Draw" buttons
         $('#draw-assembly').on('click', () => drawBoundaries('assembly'));
