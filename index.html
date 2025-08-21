@@ -1,16 +1,16 @@
-<!-- district-map.html with improved error feedback -->
+<!-- district-map.html with assembly option -->
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>District Map Drawer</title>
+  <title>District & Assembly Map Drawer</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     html,body{height:100%;margin:0;font-family:system-ui,Arial}
     #app{display:flex;flex-direction:column;height:100%}
-    header{padding:12px;background:#0b5;display:flex;gap:8px;align-items:center}
-    input[type=text]{padding:8px;border-radius:6px;border:1px solid #ccc;min-width:220px}
+    header{padding:12px;background:#0b5;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+    input[type=text]{padding:8px;border-radius:6px;border:1px solid #ccc;min-width:180px}
     button{padding:8px 12px;border-radius:6px;border:none;background:#075;color:white;cursor:pointer}
     #status{margin-left:8px;font-size:0.95rem;color:#080}
     #map{flex:1}
@@ -20,10 +20,18 @@
 <body>
   <div id="app">
     <header>
-      <label for="districtInput">District:</label>
-      <input id="districtInput" list="districtList" placeholder="Type or choose district name" autocomplete="off">
-      <datalist id="districtList"></datalist>
-      <button id="drawBtn">Create map</button>
+      <div>
+        <label for="districtInput">District:</label>
+        <input id="districtInput" list="districtList" placeholder="District name">
+        <datalist id="districtList"></datalist>
+        <button id="drawDistrictBtn">Draw District</button>
+      </div>
+      <div>
+        <label for="assemblyInput">Assembly:</label>
+        <input id="assemblyInput" list="assemblyList" placeholder="Assembly name">
+        <datalist id="assemblyList"></datalist>
+        <button id="drawAssemblyBtn">Draw Assembly</button>
+      </div>
       <div id="status"></div>
     </header>
     <div id="map"></div>
@@ -32,7 +40,8 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    const GEOJSON_URL = 'district12_V3.geojson';
+    const DISTRICT_URL = 'district12_V3.geojson';
+    const ASSEMBLY_URL = 'assembly12_V3.geojson';
 
     const map = L.map('map', {minZoom: 6}).setView([10.85, 76.27], 7);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -40,12 +49,18 @@
       attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
-    let rawGeo = null;
+    let geoDistrict = null;
+    let geoAssembly = null;
     let currentLayer = null;
 
-    const input = document.getElementById('districtInput');
-    const datalist = document.getElementById('districtList');
-    const drawBtn = document.getElementById('drawBtn');
+    const districtInput = document.getElementById('districtInput');
+    const districtList = document.getElementById('districtList');
+    const drawDistrictBtn = document.getElementById('drawDistrictBtn');
+
+    const assemblyInput = document.getElementById('assemblyInput');
+    const assemblyList = document.getElementById('assemblyList');
+    const drawAssemblyBtn = document.getElementById('drawAssemblyBtn');
+
     const status = document.getElementById('status');
     const note = document.getElementById('note');
 
@@ -56,20 +71,21 @@
 
     status.textContent = 'Loading GeoJSON...';
 
-    fetch(GEOJSON_URL).then(r => {
-      if(!r.ok) throw new Error('Failed to load ' + GEOJSON_URL + ' (status '+r.status+')');
-      return r.json();
-    }).then(gj => {
-      rawGeo = gj;
+    Promise.all([
+      fetch(DISTRICT_URL).then(r=>r.json()),
+      fetch(ASSEMBLY_URL).then(r=>r.json())
+    ]).then(([djson,ajson])=>{
+      geoDistrict = djson;
+      geoAssembly = ajson;
       status.textContent = 'GeoJSON loaded.';
-      populateDatalist(gj);
-    }).catch(err => {
-      status.textContent = '';
-      logMessage('Error loading GeoJSON: ' + err.message, true);
+      populateDatalist(geoDistrict,districtList);
+      populateDatalist(geoAssembly,assemblyList);
+    }).catch(err=>{
+      logMessage('Error loading geojson: '+err.message,true);
       console.error(err);
     });
 
-    const LIKELY_NAME_KEYS = ['NAME','Name','name','DISTRICT','District','district','DISTRICT_NAME','DIST_NAME','NAME_1'];
+    const LIKELY_NAME_KEYS = ['NAME','Name','name','DISTRICT','District','district','DISTRICT_NAME','DIST_NAME','NAME_1','AC_NAME','ACNAME'];
 
     function getFeatureName(feature){
       if(!feature || !feature.properties) return null;
@@ -86,68 +102,63 @@
       return null;
     }
 
-    function populateDatalist(geojson){
+    function populateDatalist(geojson, listElem){
       const names = new Set();
-      if(!geojson.features){
-        logMessage('GeoJSON has no features!', true);
-        return;
-      }
+      if(!geojson.features) return;
       for(const f of geojson.features){
         const n = getFeatureName(f);
         if(n) names.add(n);
       }
-      if(names.size === 0){
-        logMessage('No district names found in GeoJSON.', true);
-      }
-      Array.from(names).sort().forEach(n => {
-        const opt = document.createElement('option');
-        opt.value = n;
-        datalist.appendChild(opt);
+      Array.from(names).sort().forEach(n=>{
+        const opt=document.createElement('option');
+        opt.value=n;
+        listElem.appendChild(opt);
       });
     }
 
-    function highlightFeatures(query){
-      if(!rawGeo){
-        logMessage('GeoJSON not loaded yet.', true);
-        return;
-      }
+    function highlightFeatures(query, geojson, label){
+      if(!geojson){ logMessage(label+' GeoJSON not loaded.',true); return; }
       if(currentLayer) map.removeLayer(currentLayer);
 
-      const matched = rawGeo.features.filter(f => {
+      const matched = geojson.features.filter(f => {
         const n = getFeatureName(f);
         return n && n.toLowerCase() === query.toLowerCase();
       });
 
       if(matched.length === 0){
-        logMessage('No match found for: ' + query, true);
+        logMessage('No '+label+' found for: '+query,true);
         return;
       }
 
       currentLayer = L.geoJSON(matched, {
-        style: {color: '#0033cc', weight: 2, fillColor: '#66b2ff', fillOpacity: 0.45},
-        onEachFeature: (feature, layer) => {
+        style: {color: '#cc3300', weight: 2, fillColor: '#ff9966', fillOpacity: 0.45},
+        onEachFeature: (feature, layer)=>{
           const n = getFeatureName(feature) || 'Unknown';
-          layer.bindPopup('<b>' + n + '</b>');
+          layer.bindPopup('<b>'+label+': '+n+'</b>');
         }
       }).addTo(map);
 
       map.fitBounds(currentLayer.getBounds().pad(0.1));
-      logMessage('Highlighted district: ' + query);
+      logMessage('Highlighted '+label+': '+query);
     }
 
-    drawBtn.addEventListener('click', ()=>{
-      const q = input.value.trim();
-      if(!q){
-        logMessage('Please enter a district name.', true);
-        return;
-      }
-      highlightFeatures(q);
+    drawDistrictBtn.addEventListener('click',()=>{
+      const q=districtInput.value.trim();
+      if(!q){ logMessage('Enter a district name.',true); return; }
+      highlightFeatures(q,geoDistrict,'District');
     });
 
-    input.addEventListener('keydown', e => { if(e.key==='Enter'){ drawBtn.click(); } });
+    drawAssemblyBtn.addEventListener('click',()=>{
+      const q=assemblyInput.value.trim();
+      if(!q){ logMessage('Enter an assembly name.',true); return; }
+      highlightFeatures(q,geoAssembly,'Assembly');
+    });
 
-    if(location.protocol === 'file:'){
-      logMessage('Tip: If GeoJSON fails to load, run a local server (python -m http.server) and open http://localhost:8000/', false);
+    districtInput.addEventListener('keydown',e=>{if(e.key==='Enter')drawDistrictBtn.click();});
+    assemblyInput.addEventListener('keydown',e=>{if(e.key==='Enter')drawAssemblyBtn.click();});
+
+    if(location.protocol==='file:'){
+      logMessage('Tip: run a local server (python -m http.server) if geojson fails to load.',false);
     }
   </script>
 </body>
