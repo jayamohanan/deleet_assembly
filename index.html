@@ -1,4 +1,4 @@
-<!-- version: v1.0.0 -->
+<!-- version: v1.0.1 -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -7,17 +7,32 @@
   <title>Kerala Boundary Viewer - Static</title>
 
   <!-- Leaflet -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="" crossorigin=""/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
 
   <!-- Choices.js for searchable multi-select -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
 
   <style>
-    html,body,#map{height:100%;margin:0;padding:0}
+    html,body,#mapid{height:100%;margin:0;padding:0}
     body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
-    #app{display:flex;height:100vh;gap:12px}
-    #map{flex:1;position:relative}
-    .panel{width:360px;min-width:260px;max-width:42vw;background:rgba(255,255,255,0.98);box-shadow:0 6px 18px rgba(0,0,0,0.15);border-radius:8px;padding:14px;overflow:auto;margin:18px}
+
+    #mapid{position:absolute;inset:0;}
+
+    .panel{
+      position:absolute;
+      top:60px;
+      right:20px;
+      width:360px;
+      max-width:90%;
+      background:rgba(255,255,255,0.98);
+      box-shadow:0 6px 18px rgba(0,0,0,0.15);
+      border-radius:8px;
+      padding:14px;
+      overflow-y:auto;
+      max-height:80vh;
+      z-index:1000;
+    }
+
     .panel .group{margin-bottom:14px}
     label{display:block;font-size:13px;margin-bottom:6px}
     .controls{display:flex;gap:8px;align-items:center}
@@ -25,81 +40,70 @@
     .btn{padding:8px 12px;border-radius:6px;border:1px solid #333;background:#f4f4f4;cursor:pointer}
     .btn-primary{background:#1e88e5;color:white;border-color:transparent}
     .spacer{height:8px}
-    .ver-badge{position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.6);color:#fff;padding:6px 8px;border-radius:6px;z-index:9999;font-size:12px}
+    .ver-badge{position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.6);color:#fff;padding:6px 8px;border-radius:6px;z-index:2000;font-size:12px}
 
-    /* popover for per-tile controls (small floating panel) */
     .feature-popup{min-width:220px}
     .feature-popup input[type='color']{height:34px;padding:0;border:none;background:none}
-
-    /* responsive */
-    @media (max-width:900px){
-      #app{flex-direction:column}
-      .panel{width:100%;max-width:100%;min-width:unset;margin:12px}
-    }
   </style>
 </head>
 <body>
-  <div id="app">
-    <div id="map">
-      <div class="ver-badge" id="versionBadge">v1.0.0</div>
-      <div id="mapid" style="position:absolute;inset:0"></div>
+  <div id="mapid"></div>
+  <div class="ver-badge" id="versionBadge">v1.0.1</div>
+
+  <div class="panel" id="controlsPanel" aria-label="Boundary controls">
+    <h3 style="margin-top:0">Controls</h3>
+
+    <!-- Base map selector -->
+    <div class="group">
+      <label for="basemapSelect">Base map</label>
+      <select id="basemapSelect" class="btn" aria-label="Choose base map">
+        <option value="osm">OpenStreetMap Standard</option>
+        <option value="stamen">Stamen Toner</option>
+        <option value="no">No base map (tiles hidden)</option>
+      </select>
     </div>
 
-    <div class="panel" id="controlsPanel" aria-label="Boundary controls">
-      <h3 style="margin-top:0">Controls</h3>
-
-      <!-- Base map selector -->
-      <div class="group">
-        <label for="basemapSelect">Base map</label>
-        <select id="basemapSelect" class="btn" aria-label="Choose base map">
-          <option value="osm">OpenStreetMap Standard</option>
-          <option value="stamen">Stamen Toner</option>
-          <option value="no">No base map (tiles hidden)</option>
-        </select>
+    <!-- District panel -->
+    <div class="group" id="districtPanel">
+      <label>Districts</label>
+      <select id="districtSelect" placeholder="Type to search districts" multiple></select>
+      <div class="spacer"></div>
+      <label>Outline color (default black)</label>
+      <input type="color" id="districtOutlineColor" value="#000000" />
+      <div class="spacer"></div>
+      <label>Fill color (default black)</label>
+      <input type="color" id="districtFillColor" value="#000000" />
+      <div class="spacer"></div>
+      <label>Fill transparency</label>
+      <input type="range" id="districtTransparency" min="0" max="1" step="0.01" value="1" />
+      <div class="spacer"></div>
+      <div class="controls">
+        <button id="drawDistrict" class="btn btn-primary">Draw</button>
+        <button id="clearDistrict" class="btn">Clear</button>
       </div>
-
-      <!-- District panel -->
-      <div class="group" id="districtPanel">
-        <label>Districts</label>
-        <select id="districtSelect" placeholder="Type to search districts" multiple></select>
-        <div class="spacer"></div>
-        <label>Outline color (default black)</label>
-        <input type="color" id="districtOutlineColor" value="#000000" />
-        <div class="spacer"></div>
-        <label>Fill color (default black)</label>
-        <input type="color" id="districtFillColor" value="#000000" />
-        <div class="spacer"></div>
-        <label>Fill transparency</label>
-        <input type="range" id="districtTransparency" min="0" max="1" step="0.01" value="1" />
-        <div class="spacer"></div>
-        <div class="controls">
-          <button id="drawDistrict" class="btn btn-primary">Draw</button>
-          <button id="clearDistrict" class="btn">Clear</button>
-        </div>
-      </div>
-
-      <!-- Assembly panel -->
-      <div class="group" id="assemblyPanel">
-        <label>Assemblies</label>
-        <select id="assemblySelect" placeholder="Type to search assemblies" multiple></select>
-        <div class="spacer"></div>
-        <label>Outline color (default black)</label>
-        <input type="color" id="assemblyOutlineColor" value="#000000" />
-        <div class="spacer"></div>
-        <label>Fill color (default black)</label>
-        <input type="color" id="assemblyFillColor" value="#000000" />
-        <div class="spacer"></div>
-        <label>Fill transparency</label>
-        <input type="range" id="assemblyTransparency" min="0" max="1" step="0.01" value="1" />
-        <div class="spacer"></div>
-        <div class="controls">
-          <button id="drawAssembly" class="btn btn-primary">Draw</button>
-          <button id="clearAssembly" class="btn">Clear</button>
-        </div>
-      </div>
-
-      <div style="font-size:12px;color:#444;margin-top:8px">Tip: click any drawn tile to open per-tile customization popup. Per-tile settings override panel settings.</div>
     </div>
+
+    <!-- Assembly panel -->
+    <div class="group" id="assemblyPanel">
+      <label>Assemblies</label>
+      <select id="assemblySelect" placeholder="Type to search assemblies" multiple></select>
+      <div class="spacer"></div>
+      <label>Outline color (default black)</label>
+      <input type="color" id="assemblyOutlineColor" value="#000000" />
+      <div class="spacer"></div>
+      <label>Fill color (default black)</label>
+      <input type="color" id="assemblyFillColor" value="#000000" />
+      <div class="spacer"></div>
+      <label>Fill transparency</label>
+      <input type="range" id="assemblyTransparency" min="0" max="1" step="0.01" value="1" />
+      <div class="spacer"></div>
+      <div class="controls">
+        <button id="drawAssembly" class="btn btn-primary">Draw</button>
+        <button id="clearAssembly" class="btn">Clear</button>
+      </div>
+    </div>
+
+    <div style="font-size:12px;color:#444;margin-top:8px">Tip: click any drawn tile to open per-tile customization popup. Per-tile settings override panel settings.</div>
   </div>
 
   <!-- Scripts -->
@@ -108,18 +112,15 @@
 
   <script>
     (function(){
-      // --- Version display (also top-right overlay) ---
-      const VERSION = 'v1.0.0';
+      const VERSION = 'v1.0.1';
       document.getElementById('versionBadge').textContent = VERSION;
 
-      // --- Map and base layers ---
       const map = L.map('mapid', {center:[10.85,76.27],zoom:7,preferCanvas:true});
 
       const baseLayers = {
         osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'}),
-        stamen: L.tileLayer('https://stamen-tiles-{s}.a.ssl.fastly.net/toner/{z}/{x}/{y}.png',{maxZoom:20,attribution:'Map tiles by Stamen'}),
+        stamen: L.tileLayer('https://stamen-tiles-{s}.a.ssl.fastly.net/toner/{z}/{x}/{y}.png',{maxZoom:20,attribution:'Map tiles by Stamen'})
       };
-      // start with osm
       baseLayers.osm.addTo(map);
       let currentBase = 'osm';
 
@@ -130,14 +131,10 @@
         baseLayers[v].addTo(map); currentBase = v;
       });
 
-      // --- Containers for geojson and drawn layers ---
       let assemblyGeo = null, districtGeo = null;
       const drawn = {district: L.layerGroup().addTo(map), assembly: L.layerGroup().addTo(map)};
-
-      // maintain overlay order: draw higher order first
       const hierarchyOrder = ['district','assembly'];
 
-      // --- Load GeoJSON files (assumed to be in same repo) ---
       async function loadGeoJSONs(){
         try{
           const [aRes,dRes] = await Promise.all([
@@ -148,12 +145,11 @@
           districtGeo = await dRes.json();
           populateChoices();
         }catch(err){
-          console.error('Failed to load GeoJSONs. Make sure assembly_V15.geojson and district_V15.geojson are present in repo root.',err);
+          console.error('Failed to load GeoJSONs',err);
           alert('Failed to load GeoJSONs. Check console for details.');
         }
       }
 
-      // --- Helper: extract unique names from feature collection by "Name" key ---
       function extractNames(geo){
         if(!geo || !geo.features) return [];
         const set = new Set();
@@ -164,7 +160,6 @@
         return Array.from(set).sort((a,b)=>a.localeCompare(b,'en',{sensitivity:'base'}));
       }
 
-      // --- Populate Choices.js selects ---
       let districtChoices, assemblyChoices;
       function populateChoices(){
         const districts = extractNames(districtGeo);
@@ -173,15 +168,13 @@
         const districtSelect = document.getElementById('districtSelect');
         const assemblySelect = document.getElementById('assemblySelect');
 
-        // populate options
         districts.forEach(d=>{ const opt=document.createElement('option'); opt.value=d; opt.text=d; districtSelect.appendChild(opt); });
         assemblies.forEach(a=>{ const opt=document.createElement('option'); opt.value=a; opt.text=a; assemblySelect.appendChild(opt); });
 
-        districtChoices = new Choices(districtSelect,{removeItemButton:true,searchResultLimit:100,shouldSort:false,placeholderValue:'Type to search districts'});
-        assemblyChoices = new Choices(assemblySelect,{removeItemButton:true,searchResultLimit:100,shouldSort:false,placeholderValue:'Type to search assemblies'});
+        districtChoices = new Choices(districtSelect,{removeItemButton:true,searchResultLimit:100,shouldSort:false});
+        assemblyChoices = new Choices(assemblySelect,{removeItemButton:true,searchResultLimit:100,shouldSort:false});
       }
 
-      // --- Style factory ---
       function getStyle(kind,props,overrides){
         const outline = (overrides && overrides.outlineColor) || document.getElementById(kind + 'OutlineColor').value;
         const fill = (overrides && overrides.fillColor) || document.getElementById(kind + 'FillColor').value;
@@ -190,13 +183,10 @@
         return {color: outline, weight: weight, fillColor: fill, fillOpacity: transp};
       }
 
-      // --- Draw features by name and kind ---
       function drawByNames(kind, names){
         if(!names || names.length===0) return;
-        // ensure correct draw order: remove and re-add layers following hierarchy
-        // We'll add to corresponding layerGroup and then re-order map panes by removing/adding
         const geo = (kind==='district') ? districtGeo : assemblyGeo;
-        if(!geo){ console.warn('No geo loaded for',kind); return; }
+        if(!geo) return;
 
         const features = geo.features.filter(f=>{
           const n = f.properties && f.properties.Name ? String(f.properties.Name).trim() : null;
@@ -210,18 +200,14 @@
           }}).addTo(drawn[kind]);
         });
 
-        // maintain overlay order by clearing map of these layerGroups and adding in order
         hierarchyOrder.forEach(h => {
           map.removeLayer(drawn[h]);
           drawn[h].addTo(map);
         });
       }
 
-      function clearKind(kind){
-        drawn[kind].clearLayers();
-      }
+      function clearKind(kind){ drawn[kind].clearLayers(); }
 
-      // --- per-feature popup for overrides ---
       function onFeatureClick(e){
         const layer = e.target;
         const meta = layer.options._meta || {};
@@ -257,9 +243,8 @@
         });
       }
 
-      // --- Attach button handlers ---
       document.getElementById('drawDistrict').addEventListener('click', ()=>{
-        const vals = districtChoices.getValue(true); // array of values
+        const vals = districtChoices.getValue(true);
         drawByNames('district', vals);
       });
       document.getElementById('clearDistrict').addEventListener('click', ()=> clearKind('district'));
@@ -270,14 +255,7 @@
       });
       document.getElementById('clearAssembly').addEventListener('click', ()=> clearKind('assembly'));
 
-      // ensure touches/clicks show popup on map click too (for future expansion) — currently clicking tiles handled by onEachFeature
-      map.on('click', function(e){ /* no-op; feature clicks handled on layers */ });
-
-      // initialize
       loadGeoJSONs();
-
-      // expose some helpers for debugging
-      window.__KVB = {map,map,districtGeo,assemblyGeo,drawn};
     })();
   </script>
 </body>
