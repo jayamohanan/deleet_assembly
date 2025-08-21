@@ -1,126 +1,170 @@
-<!-- Version 1.4 -->
-
+<!-- Version: 1.0 -->
 <!DOCTYPE html>
 <html>
 <head>
   <title>Kerala Local Bodies Map</title>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
   <style>
     body {
       margin: 0;
       padding: 0;
+      font-family: Arial, sans-serif;
     }
     #map {
       width: 100%;
       height: 100vh;
     }
-    .controls {
+    .control-panel {
       position: absolute;
       top: 10px;
       left: 10px;
       background: white;
-      padding: 10px;
+      padding: 12px;
       border-radius: 8px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+      box-shadow: 0px 2px 8px rgba(0,0,0,0.3);
+      margin-bottom: 10px;
       z-index: 1000;
+      width: 260px;
     }
-    #version {
+    .panel-title {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    .input-group {
+      margin-bottom: 8px;
+    }
+    label {
+      display: block;
+      font-size: 0.9em;
+      margin-bottom: 3px;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 4px;
+      margin-bottom: 4px;
+    }
+    .version {
       position: absolute;
       top: 10px;
       right: 10px;
-      background: rgba(255,255,255,0.8);
+      background: black;
+      color: white;
       padding: 5px 10px;
-      border-radius: 8px;
       font-size: 12px;
-      font-weight: bold;
-      z-index: 2000; /* ensures it overlays everything */
+      border-radius: 5px;
+      z-index: 2000;
+      opacity: 0.8;
     }
   </style>
 </head>
 <body>
-  <div id="map"></div>
-  <div class="controls">
-    <label>Assembly: <input id="assemblyInput" list="assemblies" /></label><br><br>
-    <label>District: <input id="districtInput" list="districts" /></label><br><br>
 
-    <!-- Restored boundary customization inputs (commented for reference) -->
-    <!-- 
-    <label>Boundary Color: <input type="color" id="colorInput" value="#ff0000" /></label><br><br>
-    <label>Transparency (0–1): <input type="number" id="opacityInput" min="0" max="1" step="0.1" value="0.5" /></label><br><br>
-    -->
+<div id="map"></div>
 
-    <button onclick="drawMap()">Draw Boundaries</button>
+<!-- Version overlay -->
+<div class="version">v1.0</div>
+
+<!-- Panels -->
+<div class="control-panel" id="assembly-panel">
+  <div class="panel-title">Assemblies</div>
+  <div class="input-group">
+    <label for="assembly-name">Assembly Name(s):</label>
+    <input type="text" id="assembly-name" placeholder="Enter names, comma separated">
   </div>
+  <div class="input-group">
+    <label for="assembly-color">Boundary Color:</label>
+    <input type="color" id="assembly-color" value="#000000">
+  </div>
+  <div class="input-group">
+    <label for="assembly-transparency">Transparency:</label>
+    <input type="range" id="assembly-transparency" min="0" max="1" step="0.1" value="1">
+  </div>
+  <button onclick="drawBoundaries('assembly')">Draw</button>
+  <button onclick="clearBoundaries('assembly')">Clear</button>
+</div>
 
-  <div id="version">Version 1.4</div>
+<div class="control-panel" id="district-panel" style="top: 220px;">
+  <div class="panel-title">Districts</div>
+  <div class="input-group">
+    <label for="district-name">District Name(s):</label>
+    <input type="text" id="district-name" placeholder="Enter names, comma separated">
+  </div>
+  <div class="input-group">
+    <label for="district-color">Boundary Color:</label>
+    <input type="color" id="district-color" value="#000000">
+  </div>
+  <div class="input-group">
+    <label for="district-transparency">Transparency:</label>
+    <input type="range" id="district-transparency" min="0" max="1" step="0.1" value="1">
+  </div>
+  <button onclick="drawBoundaries('district')">Draw</button>
+  <button onclick="clearBoundaries('district')">Clear</button>
+</div>
 
-  <datalist id="assemblies">
-    <option value="Kasargod"></option>
-    <option value="Manjeshwar"></option>
-    <option value="Udma"></option>
-    <!-- Add full list here -->
-  </datalist>
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+  // Map initialization
+  var map = L.map('map').setView([10.35, 76.27], 7); // Kerala centered
 
-  <datalist id="districts">
-    <option value="Kasargod"></option>
-    <option value="Kannur"></option>
-    <option value="Wayanad"></option>
-    <!-- Add full list here -->
-  </datalist>
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
 
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script>
-    var map = L.map('map').setView([10.35, 76.27], 8);
+  // Layer groups for assemblies and districts
+  var assemblyLayerGroup = L.layerGroup().addTo(map);
+  var districtLayerGroup = L.layerGroup().addTo(map);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-    }).addTo(map);
+  // Store GeoJSON data
+  var assemblyData, districtData;
 
-    var boundaryLayer;
+  // Load GeoJSON files
+  fetch('assembly_V15.geojson').then(res => res.json()).then(data => { assemblyData = data; });
+  fetch('district_V15.geojson').then(res => res.json()).then(data => { districtData = data; });
 
-    function drawMap() {
-      var assembly = document.getElementById("assemblyInput").value;
-      var district = document.getElementById("districtInput").value;
+  function drawBoundaries(type) {
+    let nameInput = document.getElementById(type + '-name').value.trim();
+    if (!nameInput) return;
 
-      // Use default boundary styling (restore if color/opacity inputs enabled)
-      var color = "#ff0000";  
-      var opacity = 0.5;
+    let names = nameInput.split(',').map(n => n.trim().toLowerCase());
+    let color = document.getElementById(type + '-color').value;
+    let transparency = parseFloat(document.getElementById(type + '-transparency').value);
 
-      if (!assembly && !district) {
-        alert("Please enter an assembly or district name");
-        return;
-      }
+    let data = (type === 'assembly') ? assemblyData : districtData;
+    let layerGroup = (type === 'assembly') ? assemblyLayerGroup : districtLayerGroup;
 
-      if (boundaryLayer) {
-        map.removeLayer(boundaryLayer);
-      }
-
-      boundaryLayer = L.polygon([
-        [10.35, 76.27],
-        [10.40, 76.30],
-        [10.38, 76.35],
-        [10.33, 76.33]
-      ], {
-        color: color,
-        fillOpacity: opacity
-      }).addTo(map);
-
-      map.fitBounds(boundaryLayer.getBounds());
+    if (!data) {
+      alert("GeoJSON data not yet loaded!");
+      return;
     }
-  </script>
+
+    data.features.forEach(feature => {
+      let featureName = feature.properties.Name.toLowerCase();
+      if (names.includes(featureName)) {
+        L.geoJSON(feature, {
+          style: {
+            color: color,
+            weight: 2,
+            fillColor: color,
+            fillOpacity: transparency
+          }
+        }).addTo(layerGroup);
+      }
+    });
+  }
+
+  function clearBoundaries(type) {
+    if (type === 'assembly') {
+      assemblyLayerGroup.clearLayers();
+    } else {
+      districtLayerGroup.clearLayers();
+    }
+  }
+</script>
 </body>
 </html>
-
-<!-- 
-FEATURES:
-1. Version number shown at top right, always overlays everything.
-2. Input fields with auto-suggest for Assembly and District.
-3. "Draw Boundaries" button draws a polygon (placeholder).
-4. Boundary color + transparency inputs RESTORED but commented out (future editors can re-enable).
-5. Standards: 
-   - Always put version number at top as a comment and also visible overlay.
-   - Keep color & transparency inputs in comments if not used.
-   - Keep instruction block at bottom so editors don’t miss required structure.
--->
