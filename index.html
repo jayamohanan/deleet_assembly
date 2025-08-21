@@ -4,290 +4,395 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kerala Administrative Boundaries</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p418y7152G/Bw5z+Q0Q/56b/H9jY52C82/j5Q426q8I=" crossorigin=""/>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-2BqL2dF0I/B4F2x+9d9L92n0aI5f42C/j5J5C2t4V7B+M=" crossorigin=""></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4xn+LwB4V+6K9M6jR6j1Q6oD8Q2uB3Z9R8j6y+r9P6Q8=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-p4xn+LwB4V+6K9M6jR6j1Q6oD8Q2uB3Z9R8j6y+r9P6Q8=" crossorigin=""></script>
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQf855dF6x/sVw2n05sB/C6C5c5V7W292T+Ew=" crossorigin="anonymous"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/5Sl21D1c0Q/6B1m41wz4=" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
-
     <style>
-        body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
-        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
-        #version-display { position: absolute; top: 10px; right: 10px; z-index: 1000; background: rgba(255, 255, 255, 0.7); padding: 5px; border-radius: 5px; font-size: 12px; }
-        #control-panel-container {
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        #map {
+            width: 100%;
+            height: 100%;
             position: absolute;
-            top: 20px;
-            right: 20px;
-            z-index: 999;
-            width: 300px;
-            max-height: calc(100vh - 40px);
-            overflow-y: auto;
-            background-color: rgba(255, 255, 255, 0.9);
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        #panel-container {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 2;
+            background-color: rgba(255, 255, 255, 0.85);
             padding: 15px;
             border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
             display: flex;
             flex-direction: column;
             gap: 15px;
+            max-height: calc(100% - 20px);
+            overflow-y: auto;
+            resize: horizontal;
+            min-width: 250px;
         }
-        .control-panel { border: 1px solid #ccc; padding: 10px; border-radius: 5px; background: #f9f9f9; }
-        .control-panel h4 { margin-top: 0; margin-bottom: 10px; }
-        .form-group { margin-bottom: 10px; }
-        .form-group label { display: block; margin-bottom: 5px; font-weight: 500; }
-        .form-group input[type="color"] { width: 100%; height: 30px; border: none; padding: 0; }
-        .form-group input[type="range"] { width: 100%; }
-        .button-group { display: flex; justify-content: space-between; gap: 10px; margin-top: 10px; }
-        .button-group button { width: 100%; padding: 8px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .button-group .draw-btn { background-color: #4CAF50; color: white; }
-        .button-group .clear-btn { background-color: #f44336; color: white; }
-        .select2-container .select2-selection--multiple { min-height: 38px; }
-        .base-map-panel { border: 1px solid #ccc; padding: 10px; border-radius: 5px; background: #f9f9f9; }
-        .base-map-panel select { width: 100%; padding: 5px; }
-        .popup-form-group { margin-bottom: 10px; }
-        .popup-form-group label { display: block; margin-bottom: 5px; font-weight: 500; }
-        .popup-form-group input[type="color"], .popup-form-group input[type="range"] { width: 100%; }
+        .panel {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 10px;
+        }
+        .panel:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        .select2-container {
+            width: 100% !important;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+        .button-group button {
+            flex-grow: 1;
+            padding: 8px;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        .draw-button {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .draw-button:hover {
+            background-color: #45a049;
+        }
+        .clear-button {
+            background-color: #f44336;
+            color: white;
+        }
+        .clear-button:hover {
+            background-color: #d32f2f;
+        }
+        .color-picker-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .color-picker-container input[type="color"] {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            border: none;
+            background-color: transparent;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            padding: 0;
+        }
+        .color-picker-container input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+        .color-picker-container input[type="color"]::-webkit-color-swatch {
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        #version-info {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 3;
+            font-size: 14px;
+            font-weight: bold;
+            background-color: rgba(255, 255, 255, 0.7);
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+        #popup-container {
+            display: none;
+            flex-direction: column;
+            gap: 8px;
+            padding: 10px;
+            background-color: white;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+        .popup-label {
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
 
-    <div id="version-display">Version: 1.0.0</div>
     <div id="map"></div>
-
-    <div id="control-panel-container">
-        <div class="base-map-panel">
+    <div id="panel-container">
+        <div class="panel">
             <h4>Base Map</h4>
-            <div class="form-group">
-                <label for="base-map-selector">Select Base Map:</label>
-                <select id="base-map-selector">
-                    <option value="osm">OpenStreetMap</option>
-                    <option value="satellite">Satellite (Esri World Imagery)</option>
-                    <option value="none">No Base Map</option>
-                </select>
-            </div>
+            <select id="base-map-selector">
+                <option value="osm">OpenStreetMap</option>
+                <option value="carto-dark">CartoDB Dark</option>
+                <option value="carto-light">CartoDB Positron</option>
+                <option value="satellite">ESRI Satellite</option>
+                <option value="none">Hide Base Map</option>
+            </select>
         </div>
-
-        <div class="control-panel" id="district-panel">
+        
+        <div class="panel" id="district-panel">
             <h4>Districts</h4>
-            <div class="form-group">
-                <label for="district-selector">Select Districts:</label>
-                <select id="district-selector" multiple="multiple" style="width: 100%;"></select>
+            <select id="district-select" multiple="multiple"></select>
+            <div class="color-picker-container">
+                <span>Outline Color:</span>
+                <input type="color" id="district-outline-color" value="#000000">
             </div>
-            <div class="form-group">
-                <label for="district-color">Boundary Color:</label>
-                <input type="color" id="district-color" value="#000000">
+            <div class="color-picker-container">
+                <span>Fill Color:</span>
+                <input type="color" id="district-fill-color" value="#000000">
             </div>
-            <div class="form-group">
-                <label for="district-transparency">Fill Transparency:</label>
-                <input type="range" id="district-transparency" min="0" max="1" step="0.05" value="1">
-            </div>
+            <label for="district-transparency">Fill Transparency:</label>
+            <input type="range" id="district-transparency" min="0" max="1" step="0.01" value="1">
             <div class="button-group">
-                <button class="draw-btn" onclick="drawBoundaries('district')">Draw</button>
-                <button class="clear-btn" onclick="clearBoundaries('district')">Clear</button>
+                <button class="draw-button" onclick="drawBoundaries('district')">Draw</button>
+                <button class="clear-button" onclick="clearBoundaries('district')">Clear</button>
             </div>
         </div>
 
-        <div class="control-panel" id="assembly-panel">
+        <div class="panel" id="assembly-panel">
             <h4>Assemblies</h4>
-            <div class="form-group">
-                <label for="assembly-selector">Select Assemblies:</label>
-                <select id="assembly-selector" multiple="multiple" style="width: 100%;"></select>
+            <select id="assembly-select" multiple="multiple"></select>
+            <div class="color-picker-container">
+                <span>Outline Color:</span>
+                <input type="color" id="assembly-outline-color" value="#000000">
             </div>
-            <div class="form-group">
-                <label for="assembly-color">Boundary Color:</label>
-                <input type="color" id="assembly-color" value="#000000">
+            <div class="color-picker-container">
+                <span>Fill Color:</span>
+                <input type="color" id="assembly-fill-color" value="#000000">
             </div>
-            <div class="form-group">
-                <label for="assembly-transparency">Fill Transparency:</label>
-                <input type="range" id="assembly-transparency" min="0" max="1" step="0.05" value="1">
-            </div>
+            <label for="assembly-transparency">Fill Transparency:</label>
+            <input type="range" id="assembly-transparency" min="0" max="1" step="0.01" value="1">
             <div class="button-group">
-                <button class="draw-btn" onclick="drawBoundaries('assembly')">Draw</button>
-                <button class="clear-btn" onclick="clearBoundaries('assembly')">Clear</button>
+                <button class="draw-button" onclick="drawBoundaries('assembly')">Draw</button>
+                <button class="clear-button" onclick="clearBoundaries('assembly')">Clear</button>
             </div>
         </div>
     </div>
+    
+    <div id="version-info">v1.0.0</div>
 
     <script>
         const VERSION = "1.0.0";
-        document.getElementById('version-display').innerText = `Version: ${VERSION}`;
+        document.getElementById("version-info").innerText = `v${VERSION}`;
+
+        const config = {
+            district: {
+                url: 'district_V15.geojson',
+                geojson: null,
+                layerGroup: new L.LayerGroup(),
+                selectId: '#district-select',
+                outlineColorId: '#district-outline-color',
+                fillColorId: '#district-fill-color',
+                transparencyId: '#district-transparency',
+                primaryKey: 'Name'
+            },
+            assembly: {
+                url: 'assembly_V15.geojson',
+                geojson: null,
+                layerGroup: new L.LayerGroup(),
+                selectId: '#assembly-select',
+                outlineColorId: '#assembly-outline-color',
+                fillColorId: '#assembly-fill-color',
+                transparencyId: '#assembly-transparency',
+                primaryKey: 'Name'
+            }
+        };
 
         const map = L.map('map').setView([10.8505, 76.2711], 8);
-        let osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+
+        let currentBaseLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
-            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         }).addTo(map);
-        let satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
-        });
+
+        const baseLayers = {
+            'osm': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            }),
+            'carto-dark': L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CartoDB</a>'
+            }),
+            'carto-light': L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CartoDB</a>'
+            }),
+            'satellite': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+            })
+        };
 
         document.getElementById('base-map-selector').addEventListener('change', function(e) {
-            const selectedBaseMap = e.target.value;
-            if (map.hasLayer(osmLayer)) map.removeLayer(osmLayer);
-            if (map.hasLayer(satelliteLayer)) map.removeLayer(satelliteLayer);
-
-            if (selectedBaseMap === 'osm') {
-                osmLayer.addTo(map);
-            } else if (selectedBaseMap === 'satellite') {
-                satelliteLayer.addTo(map);
+            const selectedValue = e.target.value;
+            map.removeLayer(currentBaseLayer);
+            if (selectedValue !== 'none') {
+                currentBaseLayer = baseLayers[selectedValue].addTo(map);
             }
         });
 
-        const geojsonLayers = {
-            district: L.layerGroup().addTo(map),
-            assembly: L.layerGroup().addTo(map),
+        const drawnLayers = {
+            district: config.district.layerGroup.addTo(map),
+            assembly: config.assembly.layerGroup.addTo(map)
         };
-        const geojsonCache = {};
-        const drawnFeatures = {
-            district: new Map(),
-            assembly: new Map(),
-        };
+        
+        // Define the hierarchy for drawing and click events
+        const overlayOrder = ['district', 'assembly'];
 
-        const styleFeature = (feature, color, transparency) => ({
-            fillColor: color,
-            weight: 2,
-            opacity: 1,
-            color: color,
-            fillOpacity: transparency
-        });
-
-        const fetchAndProcessGeoJSON = async (type) => {
-            if (geojsonCache[type]) return geojsonCache[type];
+        async function fetchAndPopulate(type) {
             try {
-                const response = await fetch(`${type}_V15.geojson`);
-                const data = await response.json();
-                geojsonCache[type] = data;
-                return data;
-            } catch (error) {
-                console.error(`Error fetching ${type} GeoJSON:`, error);
-                return null;
-            }
-        };
-
-        const setupSelectors = async () => {
-            const districtGeoJSON = await fetchAndProcessGeoJSON('district');
-            const assemblyGeoJSON = await fetchAndProcessGeoJSON('assembly');
-
-            if (districtGeoJSON) {
-                const districtNames = districtGeoJSON.features.map(f => f.properties.Name).filter(Boolean);
-                $('#district-selector').empty();
-                districtNames.forEach(name => $('#district-selector').append(new Option(name, name)));
-                $('#district-selector').select2({ placeholder: "Select one or more districts", allowClear: true });
-            }
-
-            if (assemblyGeoJSON) {
-                const assemblyNames = assemblyGeoJSON.features.map(f => f.properties.Name).filter(Boolean);
-                $('#assembly-selector').empty();
-                assemblyNames.forEach(name => $('#assembly-selector').append(new Option(name, name)));
-                $('#assembly-selector').select2({ placeholder: "Select one or more assemblies", allowClear: true });
-            }
-        };
-        setupSelectors();
-
-        function drawBoundaries(type) {
-            const selectorId = `#${type}-selector`;
-            const colorId = `#${type}-color`;
-            const transparencyId = `#${type}-transparency`;
-
-            const selectedNames = $(selectorId).val();
-            const color = $(colorId).val();
-            const transparency = $(transparencyId).val();
-
-            if (!selectedNames || selectedNames.length === 0) return;
-
-            const geojson = geojsonCache[type];
-            if (!geojson) {
-                console.error(`GeoJSON for ${type} not loaded.`);
-                return;
-            }
-
-            const featuresToDraw = geojson.features.filter(f => selectedNames.includes(f.properties.Name));
-            
-            featuresToDraw.forEach(feature => {
-                const name = feature.properties.Name;
-                if (drawnFeatures[type].has(name)) return;
-
-                const layer = L.geoJson(feature, {
-                    style: () => styleFeature(feature, color, transparency),
-                    onEachFeature: (feature, layer) => {
-                        layer.on('click', (e) => showPopup(e, layer, feature, type));
-                    }
+                const response = await fetch(config[type].url);
+                config[type].geojson = await response.json();
+                const names = config[type].geojson.features
+                    .map(feature => feature.properties[config[type].primaryKey])
+                    .filter(name => name)
+                    .sort();
+                
+                const selectElement = $(config[type].selectId);
+                selectElement.empty();
+                names.forEach(name => {
+                    selectElement.append(new Option(name, name));
                 });
                 
-                geojsonLayers[type].addLayer(layer);
-                drawnFeatures[type].set(name, layer);
+                selectElement.select2({
+                    placeholder: `Select ${type}...`,
+                    allowClear: true,
+                    dropdownParent: $(`#${type}-panel`)
+                });
+            } catch (error) {
+                console.error(`Error fetching or populating ${type} data:`, error);
+            }
+        }
+
+        fetchAndPopulate('district');
+        fetchAndPopulate('assembly');
+
+        function drawBoundaries(type) {
+            const selectedNames = $(config[type].selectId).val();
+            if (!selectedNames || selectedNames.length === 0) return;
+
+            const outlineColor = document.querySelector(config[type].outlineColorId).value;
+            const fillColor = document.querySelector(config[type].fillColorId).value;
+            const transparency = document.querySelector(config[type].transparencyId).value;
+
+            const featuresToDraw = config[type].geojson.features.filter(
+                f => selectedNames.includes(f.properties[config[type].primaryKey])
+            );
+
+            // Temporarily clear and redraw all drawn layers to respect overlay order
+            drawnLayers[type].clearLayers();
+            featuresToDraw.forEach(feature => {
+                const layer = L.geoJSON(feature, {
+                    style: {
+                        color: outlineColor,
+                        weight: 2,
+                        opacity: 1,
+                        fillColor: fillColor,
+                        fillOpacity: transparency
+                    },
+                    onEachFeature: function(feature, layer) {
+                        layer.on('click', function(e) {
+                            handleFeatureClick(e, layer, type);
+                        });
+                        layer.on('mouseover', function(e) {
+                            this.bindTooltip(feature.properties[config[type].primaryKey]).openTooltip();
+                        });
+                    }
+                }).addTo(drawnLayers[type]);
             });
         }
 
         function clearBoundaries(type) {
-            geojsonLayers[type].clearLayers();
-            drawnFeatures[type].clear();
+            drawnLayers[type].clearLayers();
         }
 
-        const showPopup = (e, layer, feature, type) => {
-            const defaultColor = $(`#${type}-color`).val();
-            const defaultTransparency = $(`#${type}-transparency`).val();
-            const currentStyle = layer.options.style();
+        function handleFeatureClick(e, clickedLayer, clickedType) {
+            // Find the topmost layer at the clicked point
+            let topmostLayer = null;
+            let topmostType = null;
+            
+            // Check layers in reverse overlay order to find the highest one
+            for (let i = overlayOrder.length - 1; i >= 0; i--) {
+                const type = overlayOrder[i];
+                const layers = drawnLayers[type].getLayers();
+                for (let j = 0; j < layers.length; j++) {
+                    // Check if the clicked point is within this layer
+                    if (layers[j].getBounds().contains(e.latlng)) {
+                        topmostLayer = layers[j];
+                        topmostType = type;
+                        break;
+                    }
+                }
+                if (topmostLayer) break;
+            }
 
-            const popupContent = `
-                <h4>Customize Boundary</h4>
-                <p><strong>Name:</strong> ${feature.properties.Name}</p>
-                <div class="popup-form-group">
-                    <label>Outline Color:</label>
+            if (!topmostLayer) return;
+
+            // Show a popup for the topmost layer
+            const name = topmostLayer.feature.properties[config[topmostType].primaryKey];
+            const currentStyle = topmostLayer.options.style;
+
+            const popupContent = L.DomUtil.create('div', 'popup-container');
+            popupContent.innerHTML = `
+                <h4>${name} (${topmostType.charAt(0).toUpperCase() + topmostType.slice(1)})</h4>
+                <div class="color-picker-container">
+                    <span>Outline Color:</span>
                     <input type="color" id="popup-outline-color" value="${currentStyle.color}">
                 </div>
-                <div class="popup-form-group">
-                    <label>Outline Thickness:</label>
-                    <input type="range" id="popup-thickness" min="1" max="10" step="1" value="${currentStyle.weight}">
-                </div>
-                <div class="popup-form-group">
-                    <label>Fill Color:</label>
+                <div class="color-picker-container">
+                    <span>Fill Color:</span>
                     <input type="color" id="popup-fill-color" value="${currentStyle.fillColor}">
                 </div>
-                <div class="popup-form-group">
-                    <label>Fill Transparency:</label>
-                    <input type="range" id="popup-fill-transparency" min="0" max="1" step="0.05" value="${currentStyle.fillOpacity}">
+                <div>
+                    <label for="popup-thickness">Thickness:</label>
+                    <input type="range" id="popup-thickness" min="1" max="10" step="1" value="${currentStyle.weight}">
                 </div>
-                <button onclick="applyCustomization('${type}', '${feature.properties.Name}')">Apply</button>
+                <div>
+                    <label for="popup-fill-transparency">Fill Transparency:</label>
+                    <input type="range" id="popup-fill-transparency" min="0" max="1" step="0.01" value="${currentStyle.fillOpacity}">
+                </div>
             `;
-
+            
             L.popup()
                 .setLatLng(e.latlng)
                 .setContent(popupContent)
                 .openOn(map);
-        };
 
-        window.applyCustomization = (type, name) => {
-            const layer = drawnFeatures[type].get(name);
-            if (!layer) return;
-            const outlineColor = document.getElementById('popup-outline-color').value;
-            const thickness = document.getElementById('popup-thickness').value;
-            const fillColor = document.getElementById('popup-fill-color').value;
-            const fillTransparency = document.getElementById('popup-fill-transparency').value;
+            // Add event listeners for the new inputs
+            const popupOutlineColor = popupContent.querySelector('#popup-outline-color');
+            const popupFillColor = popupContent.querySelector('#popup-fill-color');
+            const popupThickness = popupContent.querySelector('#popup-thickness');
+            const popupFillTransparency = popupContent.querySelector('#popup-fill-transparency');
 
-            layer.setStyle({
-                color: outlineColor,
-                weight: thickness,
-                fillColor: fillColor,
-                fillOpacity: fillTransparency
+            popupOutlineColor.addEventListener('input', (e) => {
+                topmostLayer.setStyle({ color: e.target.value });
             });
-            map.closePopup();
-        };
-
-        // Handle layer overlay order
-        map.on('overlayadd', function (e) {
-            if (e.name === 'Districts') {
-                e.layer.bringToBack();
-            }
-            if (e.name === 'Assemblies') {
-                e.layer.bringToFront();
-            }
-        });
-
-        // Set initial Z-index for layers
-        geojsonLayers.district.setZIndex(10);
-        geojsonLayers.assembly.setZIndex(20);
-
+            popupFillColor.addEventListener('input', (e) => {
+                topmostLayer.setStyle({ fillColor: e.target.value });
+            });
+            popupThickness.addEventListener('input', (e) => {
+                topmostLayer.setStyle({ weight: e.target.value });
+            });
+            popupFillTransparency.addEventListener('input', (e) => {
+                topmostLayer.setStyle({ fillOpacity: e.target.value });
+            });
+        }
     </script>
 </body>
 </html>
