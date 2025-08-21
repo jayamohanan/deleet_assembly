@@ -1,3 +1,5 @@
+<!-- REMINDER: Update the version number below whenever you make changes to this file -->
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -7,141 +9,104 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
     body { margin: 0; padding: 0; }
-    #map { width: 100%; height: 95vh; }
+    #map { width: 100%; height: 100vh; }
     .controls {
-      padding: 8px;
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 1000;
       background: white;
-      box-shadow: 0 0 5px rgba(0,0,0,0.3);
-      font-family: sans-serif;
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      font-size: 14px;
     }
-    .controls input, .controls select {
-      margin: 4px 0;
-      padding: 4px;
-      width: 100%;
-    }
-    .control-section {
-      margin-bottom: 10px;
-      border-bottom: 1px solid #ccc;
-      padding-bottom: 8px;
-    }
-    .control-section:last-child {
-      border-bottom: none;
+    .version {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(255,255,255,0.8);
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: bold;
     }
   </style>
 </head>
 <body>
+  <div id="map"></div>
   <div class="controls">
-    <div class="control-section">
-      <h4>District Controls</h4>
-      <input type="text" id="districtInput" list="districtList" placeholder="Enter district name or 'no map'">
-      <datalist id="districtList"></datalist>
-      <label>Boundary Color:</label>
-      <input type="color" id="districtColor" value="#FF0000">
-      <label>Transparency:</label>
-      <input type="range" id="districtOpacity" min="0" max="1" step="0.1" value="0.2">
-    </div>
+    <h4>Map Controls</h4>
 
-    <div class="control-section">
-      <h4>Assembly Controls</h4>
-      <input type="text" id="assemblyInput" list="assemblyList" placeholder="Enter assembly name or 'no map'">
-      <datalist id="assemblyList"></datalist>
-      <label>Boundary Color:</label>
+    <label>District Boundary Color:
+      <input type="color" id="districtColor" value="#FF0000">
+    </label><br>
+    <label>District Transparency:
+      <input type="range" id="districtOpacity" min="0" max="1" step="0.1" value="0.2">
+    </label><br><br>
+
+    <label>Assembly Boundary Color:
       <input type="color" id="assemblyColor" value="#0000FF">
-      <label>Transparency:</label>
+    </label><br>
+    <label>Assembly Transparency:
       <input type="range" id="assemblyOpacity" min="0" max="1" step="0.1" value="0.2">
-    </div>
+    </label>
   </div>
 
-  <div id="map"></div>
+  <div class="version">Version: V15</div>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
-    var map = L.map('map').setView([10.3, 76.3], 8);
+    var map = L.map('map').setView([10.35, 76.27], 7);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
+      maxZoom: 19
     }).addTo(map);
 
-    let districtLayer, assemblyLayer, districtData, assemblyData;
+    var districtLayer, assemblyLayer;
 
-    // Load District GeoJSON
+    function styleDistrict(feature) {
+      return {
+        color: document.getElementById('districtColor').value,
+        weight: 2,
+        fillOpacity: document.getElementById('districtOpacity').value
+      };
+    }
+
+    function styleAssembly(feature) {
+      return {
+        color: document.getElementById('assemblyColor').value,
+        weight: 1.5,
+        fillOpacity: document.getElementById('assemblyOpacity').value
+      };
+    }
+
     fetch('district_V15.geojson')
       .then(res => res.json())
       .then(data => {
-        districtData = data;
-        let districtNames = [...new Set(data.features.map(f => f.properties.Name))];
-        districtNames.push("no map");
-        let districtList = document.getElementById('districtList');
-        districtNames.forEach(name => {
-          let option = document.createElement('option');
-          option.value = name;
-          districtList.appendChild(option);
-        });
+        districtLayer = L.geoJSON(data, { style: styleDistrict }).addTo(map);
       });
 
-    // Load Assembly GeoJSON
     fetch('assembly_V15.geojson')
       .then(res => res.json())
       .then(data => {
-        assemblyData = data;
-        let assemblyNames = [...new Set(data.features.map(f => f.properties.Name))];
-        assemblyNames.push("no map");
-        let assemblyList = document.getElementById('assemblyList');
-        assemblyNames.forEach(name => {
-          let option = document.createElement('option');
-          option.value = name;
-          assemblyList.appendChild(option);
-        });
+        assemblyLayer = L.geoJSON(data, { style: styleAssembly }).addTo(map);
       });
 
-    // Draw district
-    function updateDistrict() {
-      if (districtLayer) { map.removeLayer(districtLayer); districtLayer = null; }
-      let name = document.getElementById('districtInput').value;
-      if (name && name.toLowerCase() !== "no map") {
-        let color = document.getElementById('districtColor').value;
-        let opacity = parseFloat(document.getElementById('districtOpacity').value);
-        districtLayer = L.geoJSON(districtData, {
-          filter: f => f.properties.Name === name,
-          style: {
-            color: color,
-            weight: 2,
-            fillColor: color,
-            fillOpacity: opacity
-          }
-        }).addTo(map);
-        map.fitBounds(districtLayer.getBounds());
-      }
-    }
+    // Update styles dynamically
+    document.getElementById('districtColor').addEventListener('input', () => {
+      districtLayer.setStyle(styleDistrict);
+    });
+    document.getElementById('districtOpacity').addEventListener('input', () => {
+      districtLayer.setStyle(styleDistrict);
+    });
 
-    // Draw assembly
-    function updateAssembly() {
-      if (assemblyLayer) { map.removeLayer(assemblyLayer); assemblyLayer = null; }
-      let name = document.getElementById('assemblyInput').value;
-      if (name && name.toLowerCase() !== "no map") {
-        let color = document.getElementById('assemblyColor').value;
-        let opacity = parseFloat(document.getElementById('assemblyOpacity').value);
-        assemblyLayer = L.geoJSON(assemblyData, {
-          filter: f => f.properties.Name === name,
-          style: {
-            color: color,
-            weight: 2,
-            fillColor: color,
-            fillOpacity: opacity
-          }
-        }).addTo(map);
-        map.fitBounds(assemblyLayer.getBounds());
-      }
-    }
-
-    // Event listeners
-    document.getElementById('districtInput').addEventListener('change', updateDistrict);
-    document.getElementById('districtColor').addEventListener('input', updateDistrict);
-    document.getElementById('districtOpacity').addEventListener('input', updateDistrict);
-
-    document.getElementById('assemblyInput').addEventListener('change', updateAssembly);
-    document.getElementById('assemblyColor').addEventListener('input', updateAssembly);
-    document.getElementById('assemblyOpacity').addEventListener('input', updateAssembly);
+    document.getElementById('assemblyColor').addEventListener('input', () => {
+      assemblyLayer.setStyle(styleAssembly);
+    });
+    document.getElementById('assemblyOpacity').addEventListener('input', () => {
+      assemblyLayer.setStyle(styleAssembly);
+    });
   </script>
 </body>
 </html>
