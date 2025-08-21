@@ -1,408 +1,326 @@
-<!DOCTYPE html>
+<!-- version: v1.0.0 -->
+<!doctype html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kerala Administrative Divisions</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-        integrity="sha256-p418mtO1V7/2fL+gH5+k5/zWJ1tJ7E+N/0t2R4t620+W+A=" crossorigin="" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-        integrity="sha256-3u70e3+p7r9Gf6X0GqG2m3+Q+0v7L9f02F3/E8wT4e+A=" crossorigin=""></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: Arial, sans-serif;
-            display: flex;
-            height: 100vh;
-        }
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Kerala Boundary Viewer - Static</title>
 
-        #map-container {
-            flex-grow: 1;
-            position: relative;
-        }
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-sA+e2kGk0W1Zr0b6QX2b6Jp5b2PjvY8FQY3vYk1S6mM=" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-o9N1j8+3Xw0rYv1k0Zp2g7qKkO2Y1Y9T9Qw3rYfXc24=" crossorigin=""></script>
 
-        #map {
-            height: 100%;
-            width: 100%;
-        }
+  <!-- Choices.js for searchable multi-select -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
 
-        #version {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            z-index: 1000;
-            background: rgba(255, 255, 255, 0.7);
-            padding: 5px 10px;
-            border-radius: 5px;
-            font-size: 14px;
-        }
+  <!-- tiny color input support (native input type=color used) -->
 
-        #controls {
-            width: 300px;
-            padding: 20px;
-            box-sizing: border-box;
-            overflow-y: auto;
-            border-left: 1px solid #ccc;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            flex-shrink: 0;
-        }
+  <style>
+    html,body{height:100%;margin:0;font-family:Arial, Helvetica, sans-serif}
+    #map{position:absolute;left:0;top:0;right:320px;bottom:0}
+    .sidebar{position:absolute;right:0;top:20px;width:320px;bottom:0;background:rgba(255,255,255,0.95);box-shadow:-2px 0 8px rgba(0,0,0,0.15);padding:16px;overflow:auto}
+    .panel{border:1px solid #ddd;padding:10px;margin-bottom:12px;border-radius:8px}
+    .panel h3{margin:6px 0 10px 0;font-size:16px}
+    .row{display:flex;gap:8px;align-items:center}
+    label{font-size:13px}
+    .controls{display:flex;flex-direction:column;gap:8px}
+    button{padding:8px 10px;border:none;border-radius:6px;cursor:pointer}
+    .btn-draw{background:#2b8aef;color:#fff}
+    .btn-clear{background:#e74c3c;color:#fff}
+    .small{font-size:12px;color:#555}
+    .top-right-version{position:fixed;top:6px;right:6px;background:rgba(0,0,0,0.6);color:#fff;padding:6px 8px;border-radius:6px;z-index:9999;font-size:12px}
 
-        @media (max-width: 768px) {
-            body {
-                flex-direction: column;
-            }
+    /* responsive adjustments */
+    @media (max-width:900px){
+      #map{right:0;bottom:240px}
+      .sidebar{position:fixed;left:0;right:0;bottom:0;top:auto;height:240px;width:auto}
+    }
 
-            #controls {
-                width: 100%;
-                height: auto;
-                order: -1;
-            }
-
-            #map-container {
-                height: 50vh;
-            }
-        }
-
-        .panel {
-            border: 1px solid #ddd;
-            padding: 15px;
-            border-radius: 8px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        .panel h3 {
-            margin: 0 0 10px 0;
-        }
-
-        .panel .select2-container {
-            width: 100% !important;
-        }
-
-        .panel input[type="color"],
-        .panel input[type="range"] {
-            width: 100%;
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            appearance: none;
-            border: none;
-            background: transparent;
-        }
-
-        .panel input[type="color"]::-webkit-color-swatch-wrapper {
-            padding: 0;
-        }
-
-        .panel input[type="color"]::-webkit-color-swatch {
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-
-        .panel input[type="range"]::-webkit-slider-runnable-track {
-            background: #ddd;
-            border-radius: 4px;
-            height: 8px;
-        }
-
-        .panel input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            background-color: #555;
-            height: 20px;
-            width: 20px;
-            border-radius: 50%;
-            margin-top: -6px;
-        }
-
-        .panel-actions {
-            display: flex;
-            justify-content: space-between;
-            gap: 10px;
-        }
-
-        .panel-actions button {
-            flex-grow: 1;
-            padding: 10px 15px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-
-        .panel-actions button.draw {
-            background-color: #4CAF50;
-            color: white;
-        }
-
-        .panel-actions button.clear {
-            background-color: #f44336;
-            color: white;
-        }
-
-        .base-map-control {
-            margin-top: 20px;
-        }
-
-        .base-map-control select {
-            width: 100%;
-            padding: 8px;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-        }
-
-        .pop-up-container {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 1000;
-            background: rgba(255, 255, 255, 0.9);
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            display: none;
-            flex-direction: column;
-            gap: 10px;
-            width: 250px;
-        }
-
-        .pop-up-container h4 {
-            margin: 0 0 10px 0;
-        }
-
-        .pop-up-container .color-input {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .pop-up-container .color-input input[type="color"] {
-            flex-grow: 1;
-        }
-    </style>
+    .form-row{display:flex;gap:8px;align-items:center}
+    .form-row input[type="range"]{width:100%}
+    .spacer{height:8px}
+  </style>
 </head>
-
 <body>
-    <div id="version">Version: 1.0.0</div>
+  <div class="top-right-version">v1.0.0</div>
+  <div id="map"></div>
 
-    <div id="map-container">
-        <div id="map"></div>
+  <aside class="sidebar" aria-label="Controls">
+    <div class="panel">
+      <h2 style="margin:0;">Kerala Boundaries (Static)</h2>
+      <p class="small">Select features from the GeoJSONs and press Draw. Click shapes on map to customize that tile (overrides panel settings).</p>
+      <div class="spacer"></div>
+      <div class="form-row">
+        <label for="basemap">Base map:</label>
+        <select id="basemap" style="flex:1">
+          <option value="osm">OpenStreetMap</option>
+          <option value="sat">Esri WorldImagery</option>
+          <option value="none">No base map (tiles hidden)</option>
+        </select>
+      </div>
     </div>
 
-    <div id="controls">
-        <div class="base-map-control">
-            <h3>Base Map</h3>
-            <select id="base-map-selector">
-                <option value="osm">OpenStreetMap</option>
-                <option value="none">No Base Map</option>
-            </select>
+    <!-- District panel -->
+    <section class="panel" id="district-panel">
+      <h3>Districts</h3>
+      <div class="controls">
+        <label class="small">Choose District(s)</label>
+        <select id="district-select" multiple></select>
+
+        <div class="form-row">
+          <label>Outline color</label>
+          <input type="color" id="district-outline" value="#000000" />
+        </div>
+        <div class="form-row">
+          <label>Outline thickness</label>
+          <input type="number" id="district-weight" value="2" min="0" max="10" style="width:80px" />
+        </div>
+        <div class="form-row">
+          <label>Fill color</label>
+          <input type="color" id="district-fill" value="#000000" />
+        </div>
+        <div class="form-row">
+          <label style="width:100px">Transparency (fill)</label>
+          <input type="range" id="district-opacity" min="0" max="1" step="0.01" value="1" />
         </div>
 
-        <hr />
+        <div class="form-row">
+          <button class="btn-draw" id="draw-district">Draw</button>
+          <button class="btn-clear" id="clear-district">Clear</button>
+        </div>
+      </div>
+    </section>
 
-        <div id="district-panel" class="panel">
-            <h3>Districts</h3>
-            <select class="boundary-select" id="district-names" multiple="multiple"></select>
-            <label for="district-color">Color:</label>
-            <input type="color" id="district-color" value="#000000">
-            <label for="district-transparency">Transparency:</label>
-            <input type="range" id="district-transparency" min="0" max="1" step="0.01" value="1">
-            <div class="panel-actions">
-                <button class="draw" id="draw-district">Draw</button>
-                <button class="clear" id="clear-district">Clear</button>
-            </div>
+    <!-- Assembly panel -->
+    <section class="panel" id="assembly-panel">
+      <h3>Assemblies</h3>
+      <div class="controls">
+        <label class="small">Choose Assembly(s)</label>
+        <select id="assembly-select" multiple></select>
+
+        <div class="form-row">
+          <label>Outline color</label>
+          <input type="color" id="assembly-outline" value="#000000" />
+        </div>
+        <div class="form-row">
+          <label>Outline thickness</label>
+          <input type="number" id="assembly-weight" value="2" min="0" max="10" style="width:80px" />
+        </div>
+        <div class="form-row">
+          <label>Fill color</label>
+          <input type="color" id="assembly-fill" value="#000000" />
+        </div>
+        <div class="form-row">
+          <label style="width:100px">Transparency (fill)</label>
+          <input type="range" id="assembly-opacity" min="0" max="1" step="0.01" value="1" />
         </div>
 
-        <hr />
-
-        <div id="assembly-panel" class="panel">
-            <h3>Assemblies</h3>
-            <select class="boundary-select" id="assembly-names" multiple="multiple"></select>
-            <label for="assembly-color">Color:</label>
-            <input type="color" id="assembly-color" value="#000000">
-            <label for="assembly-transparency">Transparency:</label>
-            <input type="range" id="assembly-transparency" min="0" max="1" step="0.01" value="1">
-            <div class="panel-actions">
-                <button class="draw" id="draw-assembly">Draw</button>
-                <button class="clear" id="clear-assembly">Clear</button>
-            </div>
+        <div class="form-row">
+          <button class="btn-draw" id="draw-assembly">Draw</button>
+          <button class="btn-clear" id="clear-assembly">Clear</button>
         </div>
+      </div>
+    </section>
 
-        <hr />
-        </div>
+    <section class="panel">
+      <h3>Hints & Notes</h3>
+      <ol>
+        <li class="small">GeoJSON files expected at repository root: <code>district_V15.geojson</code> and <code>assembly_V15.geojson</code>.</li>
+        <li class="small">Primary key field: <code>Name</code>. Features with null Name are shown as <em>Unnamed &lt;index&gt;</em>.</li>
+        <li class="small">Drawing order preserves hierarchy: Districts are added first, Assemblies above them.</li>
+      </ol>
+    </section>
+  </aside>
 
-    <script>
-        // Store drawn layers to manage them
-        let drawnLayers = {
-            district: L.layerGroup(),
-            assembly: L.layerGroup()
-        };
+  <script>
+    // Basic map setup
+    const map = L.map('map', {minZoom:6, maxZoom:18}).setView([10.85,76.27],7);
 
-        const version = document.getElementById('version').textContent.split(': ')[1];
-        console.log(`Current HTML Version: ${version}`);
+    // basemap layers
+    const basemaps = {
+      'osm': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'© OpenStreetMap contributors'}),
+      'sat': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {maxZoom:19, attribution:'Esri'}),
+      'none': L.layerGroup([])
+    };
 
-        const map = L.map('map').setView([10.8505, 76.2711], 8); // Centered on Kerala
+    let currentBasemap = basemaps['osm'];
+    currentBasemap.addTo(map);
 
-        const baseMaps = {
-            'OpenStreetMap': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            }),
-            'None': L.layerGroup() // An empty layer group for "no base map"
-        };
+    document.getElementById('basemap').addEventListener('change', (e)=>{
+      if (currentBasemap) map.removeLayer(currentBasemap);
+      currentBasemap = basemaps[e.target.value];
+      if (currentBasemap) map.addLayer(currentBasemap);
+    });
 
-        baseMaps.OpenStreetMap.addTo(map);
+    // LayerGroups to keep control and ordering
+    const districtGroup = L.layerGroup().addTo(map); // lower/higher? district is higher than state
+    const assemblyGroup = L.layerGroup().addTo(map);
 
-        document.getElementById('base-map-selector').addEventListener('change', function (e) {
-            const selectedMap = e.target.value;
-            for (const key in baseMaps) {
-                map.removeLayer(baseMaps[key]);
-            }
-            if (selectedMap === 'osm') {
-                baseMaps.OpenStreetMap.addTo(map);
-            }
-            // For 'none', no layer is added, effectively hiding the base map
+    // store geojson raw for populating selects
+    let districtGeo = null;
+    let assemblyGeo = null;
+
+    // Helper: safe feature title
+    function featureTitle(f, idx){
+      const n = f && f.properties && f.properties.Name;
+      if (n && String(n).trim()!=='') return String(n);
+      return `Unnamed ${idx}`;
+    }
+
+    // load geojson files (assumes files are in repo root alongside this index.html)
+    async function loadGeoJSON(url){
+      try{
+        const rsp = await fetch(url);
+        if(!rsp.ok) throw new Error('Failed to load '+url+' ('+rsp.status+')');
+        return await rsp.json();
+      }catch(err){
+        console.error(err);
+        return null;
+      }
+    }
+
+    function populateChoice(selectEl, items){
+      // items: array of {value,label}
+      selectEl.innerHTML='';
+      items.forEach(it=>{
+        const opt = document.createElement('option'); opt.value = it.value; opt.textContent = it.label;
+        selectEl.appendChild(opt);
+      });
+      // initialize Choices
+      if (selectEl._choicesInstance) selectEl._choicesInstance.destroy();
+      selectEl._choicesInstance = new Choices(selectEl, {removeItemButton:true, searchEnabled:true, placeholderValue:'Type to search...'});
+    }
+
+    (async ()=>{
+      districtGeo = await loadGeoJSON('district_V15.geojson');
+      assemblyGeo = await loadGeoJSON('assembly_V15.geojson');
+
+      if (districtGeo && districtGeo.features){
+        const items = districtGeo.features.map((f,i)=>({value:i, label:featureTitle(f,i)}));
+        populateChoice(document.getElementById('district-select'), items);
+      }
+      if (assemblyGeo && assemblyGeo.features){
+        const items = assemblyGeo.features.map((f,i)=>({value:i, label:featureTitle(f,i)}));
+        populateChoice(document.getElementById('assembly-select'), items);
+      }
+    })();
+
+    // utility to style polygons
+    function styleFor(kind, options={}){
+      // kind: 'district' or 'assembly'
+      const outline = document.getElementById(kind+'-outline').value;
+      const fill = document.getElementById(kind+'-fill').value;
+      const weight = parseFloat(document.getElementById(kind+'-weight').value) || 1;
+      const opacity = parseFloat(document.getElementById(kind+'-opacity').value);
+      return Object.assign({color:outline, weight:weight, fillColor:fill, fillOpacity:opacity, opacity:1}, options);
+    }
+
+    // draw helpers
+    function drawFeaturesFromGeo(geo, indices, kind){
+      // kind: 'district' or 'assembly'
+      if(!geo) return;
+      const group = (kind==='district') ? districtGroup : assemblyGroup;
+      // for ordering: if district then add first; if assembly then bring to front
+      indices.forEach(idx=>{
+        const feat = geo.features[idx];
+        if(!feat) return;
+        const layer = L.geoJSON(feat, {
+          style: styleFor(kind),
+          onEachFeature: (feature, layer)=>{
+            // popup content with controls; unique ids
+            const uid = 'popup-'+kind+'-'+Math.random().toString(36).substr(2,9);
+            const title = featureTitle(feature, idx);
+            const popupHtml = `
+              <div style="min-width:220px">
+                <strong>${title}</strong><br/>
+                <div class="form-row"><label>Outline</label><input id="${uid}-outline" type="color" value="${document.getElementById(kind+'-outline').value}" /></div>
+                <div class="form-row"><label>Weight</label><input id="${uid}-weight" type="number" value="${document.getElementById(kind+'-weight').value}" style="width:70px" /></div>
+                <div class="form-row"><label>Fill</label><input id="${uid}-fill" type="color" value="${document.getElementById(kind+'-fill').value}" /></div>
+                <div class="form-row"><label>Opacity</label><input id="${uid}-opacity" type="range" min="0" max="1" step="0.01" value="${document.getElementById(kind+'-opacity').value}" /></div>
+                <div style="margin-top:6px;display:flex;gap:6px"><button id="${uid}-apply">Apply</button><button id="${uid}-close">Close</button></div>
+              </div>
+            `;
+            layer.bindPopup(popupHtml);
+
+            // store meta
+            layer._meta = {kind:kind, idx:idx, title:featureTitle(feature, idx)};
+            // set event so that when opened we attach handlers
+            layer.on('popupopen', (ev)=>{
+              const lp = ev.popup;
+              const src = lp._source;
+              const outlineInp = document.getElementById(uid+'-outline');
+              const weightInp = document.getElementById(uid+'-weight');
+              const fillInp = document.getElementById(uid+'-fill');
+              const opInp = document.getElementById(uid+'-opacity');
+              const applyBtn = document.getElementById(uid+'-apply');
+              const closeBtn = document.getElementById(uid+'-close');
+
+              if(applyBtn){
+                applyBtn.onclick = ()=>{
+                  // apply style to this layer overriding global
+                  const newStyle = {color: outlineInp.value, weight: parseFloat(weightInp.value)||1, fillColor: fillInp.value, fillOpacity: parseFloat(opInp.value)};
+                  try{ src.setStyle(newStyle); }catch(e){
+                    // for point/marker
+                    if(src.setIcon) console.warn('cannot set style on icon');
+                  }
+                  lp._close();
+                };
+              }
+              if(closeBtn){ closeBtn.onclick = ()=> lp._close(); }
+            });
+
+          }
         });
+        // tag layer for later clearing
+        layer.eachLayer(l=>{ l._metaKind = kind; l._metaIndex = idx; });
+        group.addLayer(layer);
+      });
 
-        // Function to load and parse GeoJSON
-        async function loadGeoJson(url) {
-            const response = await fetch(url);
-            const data = await response.json();
-            return data.features.filter(feature => feature.properties.Name); // Filter out null names
-        }
+      // enforce drawing order: districts under assemblies
+      districtGroup.eachLayer(l=>{ l.eachLayer && l.eachLayer(x=>x.bringToBack && x.bringToBack()); });
+      assemblyGroup.eachLayer(l=>{ l.eachLayer && l.eachLayer(x=>x.bringToFront && x.bringToFront()); });
 
-        // Initialize Select2 dropdowns
-        $('.boundary-select').select2({
-            placeholder: "Select a boundary",
-            allowClear: true
-        });
+      // fit map to last added feature set (optional)
+      try{
+        const allBounds = L.featureGroup([districtGroup, assemblyGroup]).getBounds();
+        if (allBounds.isValid()) map.fitBounds(allBounds, {padding:[20,20]});
+      }catch(e){}
+    }
 
-        // Load data into dropdowns
-        async function loadDropdowns() {
-            const districtData = await loadGeoJson('district_V15.geojson');
-            const assemblyData = await loadGeoJson('assembly_V15.geojson');
+    // draw button handlers
+    document.getElementById('draw-district').addEventListener('click', ()=>{
+      const sel = document.getElementById('district-select');
+      const vals = Array.from(sel.selectedOptions).map(o=>parseInt(o.value));
+      drawFeaturesFromGeo(districtGeo, vals, 'district');
+    });
+    document.getElementById('draw-assembly').addEventListener('click', ()=>{
+      const sel = document.getElementById('assembly-select');
+      const vals = Array.from(sel.selectedOptions).map(o=>parseInt(o.value));
+      drawFeaturesFromGeo(assemblyGeo, vals, 'assembly');
+    });
 
-            districtData.forEach(feature => {
-                $('#district-names').append(new Option(feature.properties.Name, feature.properties.Name));
-            });
-            assemblyData.forEach(feature => {
-                $('#assembly-names').append(new Option(feature.properties.Name, feature.properties.Name));
-            });
-        }
-        loadDropdowns();
+    // clear handlers
+    document.getElementById('clear-district').addEventListener('click', ()=>{
+      districtGroup.clearLayers();
+    });
+    document.getElementById('clear-assembly').addEventListener('click', ()=>{
+      assemblyGroup.clearLayers();
+    });
 
-        // Global functions for drawing and clearing boundaries
-        function getStyle(color, transparency) {
-            return {
-                fillColor: color,
-                weight: 2,
-                opacity: 1,
-                color: color,
-                fillOpacity: 1 - transparency
-            };
-        }
+    // handle popup apply via map 'popupopen' generic (for click customization safety)
+    map.on('popupopen', function(e){
+      // nothing needed here because layer binds its own popupopen
+    });
 
-        function clearBoundaries(type) {
-            if (drawnLayers[type]) {
-                drawnLayers[type].clearLayers();
-            }
-        }
+    // keyboard accessibility: close popup on ESC
+    document.addEventListener('keydown', (ev)=>{ if(ev.key==='Escape'){ map.closePopup(); } });
 
-        async function drawBoundaries(type) {
-            const selectId = `#${type}-names`;
-            const colorId = `#${type}-color`;
-            const transparencyId = `#${type}-transparency`;
-            const geoJsonFile = `${type}_V15.geojson`;
+    // small UX: when a panel control changes, update any selected but not-yet drawn styles (no immediate redraw)
 
-            const selectedNames = $(selectId).val();
-            const color = $(colorId).val();
-            const transparency = $(transparencyId).val();
+    // prevent map controls from covering version overlay
+    document.querySelector('.top-right-version').style.pointerEvents='none';
 
-            if (!selectedNames || selectedNames.length === 0) {
-                return;
-            }
-
-            const geojsonData = await loadGeoJson(geoJsonFile);
-
-            clearBoundaries(type);
-
-            selectedNames.forEach(name => {
-                const feature = geojsonData.find(f => f.properties.Name === name);
-                if (feature) {
-                    const style = getStyle(color, transparency);
-                    const layer = L.geoJson(feature, {
-                        style: style,
-                        onEachFeature: function (feature, layer) {
-                            layer.on('click', function (e) {
-                                // Pop-up for customization
-                                const popupContent = `
-                                    <h4>Customize "${feature.properties.Name}"</h4>
-                                    <div class="color-input">
-                                        <label>Outline Color:</label>
-                                        <input type="color" id="popup-outline-color" value="${style.color}">
-                                    </div>
-                                    <div class="color-input">
-                                        <label>Fill Color:</label>
-                                        <input type="color" id="popup-fill-color" value="${style.fillColor}">
-                                    </div>
-                                    <label>Outline Thickness:</label>
-                                    <input type="range" id="popup-thickness" min="1" max="10" value="${style.weight}">
-                                `;
-                                layer.bindPopup(popupContent, {
-                                    closeButton: false,
-                                    autoPan: false
-                                }).openPopup(e.latlng);
-
-                                document.getElementById('popup-outline-color').addEventListener('input', function (event) {
-                                    layer.setStyle({ color: event.target.value });
-                                });
-                                document.getElementById('popup-fill-color').addEventListener('input', function (event) {
-                                    layer.setStyle({ fillColor: event.target.value });
-                                });
-                                document.getElementById('popup-thickness').addEventListener('input', function (event) {
-                                    layer.setStyle({ weight: event.target.value });
-                                });
-                            });
-                        }
-                    });
-                    drawnLayers[type].addLayer(layer);
-                }
-            });
-
-            // Add layers to the map respecting hierarchy
-            if (drawnLayers.district.getLayers().length > 0) {
-                drawnLayers.district.addTo(map);
-            }
-            if (drawnLayers.assembly.getLayers().length > 0) {
-                drawnLayers.assembly.addTo(map);
-            }
-
-            // Ensure correct overlay order: District below Assembly
-            if (drawnLayers.district.getLayers().length > 0) {
-                drawnLayers.district.bringToBack();
-            }
-            if (drawnLayers.assembly.getLayers().length > 0) {
-                drawnLayers.assembly.bringToFront();
-            }
-
-            map.fitBounds(drawnLayers[type].getBounds());
-        }
-
-        // Event listeners for Draw and Clear buttons
-        document.getElementById('draw-district').addEventListener('click', () => drawBoundaries('district'));
-        document.getElementById('clear-district').addEventListener('click', () => clearBoundaries('district'));
-        document.getElementById('draw-assembly').addEventListener('click', () => drawBoundaries('assembly'));
-        document.getElementById('clear-assembly').addEventListener('click', () => clearBoundaries('assembly'));
-
-    </script>
+  </script>
 </body>
-
 </html>
