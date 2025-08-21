@@ -1,170 +1,243 @@
-<!-- Version: 1.0 -->
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Kerala Local Bodies Map</title>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: Arial, sans-serif;
-    }
-    #map {
-      width: 100%;
-      height: 100vh;
-    }
-    .control-panel {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      background: white;
-      padding: 12px;
-      border-radius: 8px;
-      box-shadow: 0px 2px 8px rgba(0,0,0,0.3);
-      margin-bottom: 10px;
-      z-index: 1000;
-      width: 260px;
-    }
-    .panel-title {
-      font-weight: bold;
-      margin-bottom: 5px;
-    }
-    .input-group {
-      margin-bottom: 8px;
-    }
-    label {
-      display: block;
-      font-size: 0.9em;
-      margin-bottom: 3px;
-    }
-    input[type="text"] {
-      width: 100%;
-      padding: 4px;
-      margin-bottom: 4px;
-    }
-    .version {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background: black;
-      color: white;
-      padding: 5px 10px;
-      font-size: 12px;
-      border-radius: 5px;
-      z-index: 2000;
-      opacity: 0.8;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kerala Administrative Boundaries</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 1;
+        }
+        #version-number {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .controls-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            width: 350px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .control-group {
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #ccc;
+        }
+        .control-group:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        .control-group h5 {
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+        .form-label {
+            font-weight: 500;
+        }
+    </style>
 </head>
 <body>
 
-<div id="map"></div>
+    <div id="version-number">v1.0</div>
 
-<!-- Version overlay -->
-<div class="version">v1.0</div>
+    <div id="map"></div>
+    
 
-<!-- Panels -->
-<div class="control-panel" id="assembly-panel">
-  <div class="panel-title">Assemblies</div>
-  <div class="input-group">
-    <label for="assembly-name">Assembly Name(s):</label>
-    <input type="text" id="assembly-name" placeholder="Enter names, comma separated">
-  </div>
-  <div class="input-group">
-    <label for="assembly-color">Boundary Color:</label>
-    <input type="color" id="assembly-color" value="#000000">
-  </div>
-  <div class="input-group">
-    <label for="assembly-transparency">Transparency:</label>
-    <input type="range" id="assembly-transparency" min="0" max="1" step="0.1" value="1">
-  </div>
-  <button onclick="drawBoundaries('assembly')">Draw</button>
-  <button onclick="clearBoundaries('assembly')">Clear</button>
-</div>
+    <div class="controls-panel">
+        
+        <div class="control-group">
+            <h5 class="text-primary">Assembly Boundaries</h5>
+            
+            <div class="mb-3">
+                <label for="assembly-select" class="form-label">Select Assembly:</label>
+                <select id="assembly-select" class="form-control" multiple="multiple"></select>
+            </div>
+            
+            <div class="mb-3">
+                <label for="assembly-color-picker" class="form-label">Boundary Color:</label>
+                <input type="color" class="form-control form-control-color" id="assembly-color-picker" value="#000000">
+            </div>
+            
+            <div class="mb-3">
+                <label for="assembly-transparency" class="form-label">Transparency:</label>
+                <input type="range" class="form-range" id="assembly-transparency" min="0" max="1" step="0.1" value="1">
+            </div>
+            
+            <div class="d-grid gap-2">
+                <button id="draw-assembly" class="btn btn-primary">Draw</button>
+                <button id="clear-assembly" class="btn btn-outline-secondary">Clear</button>
+            </div>
+        </div>
 
-<div class="control-panel" id="district-panel" style="top: 220px;">
-  <div class="panel-title">Districts</div>
-  <div class="input-group">
-    <label for="district-name">District Name(s):</label>
-    <input type="text" id="district-name" placeholder="Enter names, comma separated">
-  </div>
-  <div class="input-group">
-    <label for="district-color">Boundary Color:</label>
-    <input type="color" id="district-color" value="#000000">
-  </div>
-  <div class="input-group">
-    <label for="district-transparency">Transparency:</label>
-    <input type="range" id="district-transparency" min="0" max="1" step="0.1" value="1">
-  </div>
-  <button onclick="drawBoundaries('district')">Draw</button>
-  <button onclick="clearBoundaries('district')">Clear</button>
-</div>
+        <div class="control-group">
+            <h5 class="text-success">District Boundaries</h5>
+            
+            <div class="mb-3">
+                <label for="district-select" class="form-label">Select District:</label>
+                <select id="district-select" class="form-control" multiple="multiple"></select>
+            </div>
+            
+            <div class="mb-3">
+                <label for="district-color-picker" class="form-label">Boundary Color:</label>
+                <input type="color" class="form-control form-control-color" id="district-color-picker" value="#000000">
+            </div>
+            
+            <div class="mb-3">
+                <label for="district-transparency" class="form-label">Transparency:</label>
+                <input type="range" class="form-range" id="district-transparency" min="0" max="1" step="0.1" value="1">
+            </div>
+            
+            <div class="d-grid gap-2">
+                <button id="draw-district" class="btn btn-success">Draw</button>
+                <button id="clear-district" class="btn btn-outline-secondary">Clear</button>
+            </div>
+        </div>
 
-<!-- Leaflet JS -->
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script>
-  // Map initialization
-  var map = L.map('map').setView([10.35, 76.27], 7); // Kerala centered
+    </div>
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(map);
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    
+    <script>
+        // Store the version number as a comment in the code
+        // Version Number: 1.0
 
-  // Layer groups for assemblies and districts
-  var assemblyLayerGroup = L.layerGroup().addTo(map);
-  var districtLayerGroup = L.layerGroup().addTo(map);
+        // Initialize the map centered on Kerala
+        const map = L.map('map').setView([10.8505, 76.2711], 8);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
 
-  // Store GeoJSON data
-  var assemblyData, districtData;
+        // Store drawn layers
+        const drawnLayers = {
+            assembly: L.featureGroup().addTo(map),
+            district: L.featureGroup().addTo(map)
+        };
 
-  // Load GeoJSON files
-  fetch('assembly_V15.geojson').then(res => res.json()).then(data => { assemblyData = data; });
-  fetch('district_V15.geojson').then(res => res.json()).then(data => { districtData = data; });
+        // Function to fetch GeoJSON and populate Select2
+        function fetchAndPopulate(url, selectId) {
+            $.getJSON(url, function(data) {
+                const names = data.features
+                    .map(feature => feature.properties.Name)
+                    .filter(name => name)
+                    .sort();
 
-  function drawBoundaries(type) {
-    let nameInput = document.getElementById(type + '-name').value.trim();
-    if (!nameInput) return;
+                const options = names.map(name => ({
+                    id: name,
+                    text: name
+                }));
+                
+                $(`#${selectId}`).select2({
+                    data: options,
+                    placeholder: `Select ${selectId.replace('-select', '')} name(s)`,
+                    tags: true,
+                    tokenSeparators: [',']
+                });
+                
+                // Store the full GeoJSON data for later use
+                $(`#${selectId}`).data('geojson', data);
+            });
+        }
+        
+        // Load data and populate dropdowns
+        fetchAndPopulate('assembly_V15.geojson', 'assembly-select');
+        fetchAndPopulate('district_V15.geojson', 'district-select');
+        
+        // Function to draw a GeoJSON layer
+        function drawBoundaries(type) {
+            const selectId = `${type}-select`;
+            const colorPickerId = `${type}-color-picker`;
+            const transparencySliderId = `${type}-transparency`;
 
-    let names = nameInput.split(',').map(n => n.trim().toLowerCase());
-    let color = document.getElementById(type + '-color').value;
-    let transparency = parseFloat(document.getElementById(type + '-transparency').value);
+            const selectedNames = $(`#${selectId}`).val();
+            const color = $(`#${colorPickerId}`).val();
+            const transparency = $(`#${transparencySliderId}`).val();
+            const geojson = $(`#${selectId}`).data('geojson');
 
-    let data = (type === 'assembly') ? assemblyData : districtData;
-    let layerGroup = (type === 'assembly') ? assemblyLayerGroup : districtLayerGroup;
+            if (!selectedNames || selectedNames.length === 0) {
+                alert(`Please select at least one ${type} to draw.`);
+                return;
+            }
 
-    if (!data) {
-      alert("GeoJSON data not yet loaded!");
-      return;
-    }
+            // Clear existing layers for this type
+            clearBoundaries(type);
+            
+            // Loop through selected names and draw each boundary
+            selectedNames.forEach(name => {
+                const filteredData = {
+                    ...geojson,
+                    features: geojson.features.filter(f => f.properties.Name === name)
+                };
 
-    data.features.forEach(feature => {
-      let featureName = feature.properties.Name.toLowerCase();
-      if (names.includes(featureName)) {
-        L.geoJSON(feature, {
-          style: {
-            color: color,
-            weight: 2,
-            fillColor: color,
-            fillOpacity: transparency
-          }
-        }).addTo(layerGroup);
-      }
-    });
-  }
+                const layer = L.geoJSON(filteredData, {
+                    style: function(feature) {
+                        return {
+                            color: color,
+                            weight: 2,
+                            fillColor: color,
+                            fillOpacity: 1 - transparency, // Invert transparency value for fillOpacity
+                            opacity: 1
+                        };
+                    },
+                    onEachFeature: function(feature, layer) {
+                        // Optional: Add a popup with the name
+                        if (feature.properties && feature.properties.Name) {
+                            layer.bindPopup(feature.properties.Name);
+                        }
+                    }
+                }).addTo(drawnLayers[type]);
+            });
 
-  function clearBoundaries(type) {
-    if (type === 'assembly') {
-      assemblyLayerGroup.clearLayers();
-    } else {
-      districtLayerGroup.clearLayers();
-    }
-  }
-</script>
+            // Fit map to the drawn layers
+            map.fitBounds(drawnLayers[type].getBounds());
+        }
+
+        // Function to clear a specific type of boundary
+        function clearBoundaries(type) {
+            drawnLayers[type].clearLayers();
+        }
+
+        // Event listeners for "Draw" buttons
+        $('#draw-assembly').on('click', () => drawBoundaries('assembly'));
+        $('#draw-district').on('click', () => drawBoundaries('district'));
+        
+        // Event listeners for "Clear" buttons
+        $('#clear-assembly').on('click', () => clearBoundaries('assembly'));
+        $('#clear-district').on('click', () => clearBoundaries('district'));
+    </script>
 </body>
 </html>
