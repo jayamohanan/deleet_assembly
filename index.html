@@ -95,6 +95,15 @@
 </head>
 
 <body>
+    <svg style="position: absolute; width: 0; height: 0;">
+        <defs>
+            <pattern id="slanted-lines" patternUnits="userSpaceOnUse" width="10" height="10"
+                patternTransform="rotate(45)">
+                <line x1="0" y1="0" x2="0" y2="10" stroke="#000000" stroke-width="2" />
+            </pattern>
+        </defs>
+    </svg>
+
     <div id="version-info">Version: 1.0.0</div>
     <div id="map"></div>
     <div class="controls">
@@ -123,6 +132,13 @@
                 <select id="assembly-select" multiple="multiple"></select>
             </div>
             <div class="input-group">
+                <label for="assembly-fill-type">Fill Type:</label>
+                <select id="assembly-fill-type">
+                    <option value="color">Solid Color</option>
+                    <option value="pattern">Pattern</option>
+                </select>
+            </div>
+            <div class="input-group">
                 <label for="assembly-color">Boundary Color:</label>
                 <input type="color" id="assembly-color" value="#000000">
             </div>
@@ -141,7 +157,7 @@
                 <select id="base-map-select">
                     <option value="osm">OpenStreetMap</option>
                     <option value="none">None</option>
-                    </select>
+                </select>
             </div>
         </div>
     </div>
@@ -222,22 +238,29 @@
             }
         }
 
-        function getStyle(color, transparency) {
-            return {
-                fillColor: color,
+        function getStyle(color, transparency, fillType) {
+            let style = {
                 weight: 2,
                 opacity: 1,
                 color: 'black',
                 fillOpacity: transparency
             };
+
+            if (fillType === 'pattern') {
+                style.fillColor = `url(#slanted-lines)`;
+            } else {
+                style.fillColor = color;
+            }
+
+            return style;
         }
 
         function drawBoundaries(type) {
-            const selectElement = document.getElementById(`${type}-select`);
             const selectedNames = $(`#${type}-select`).val();
             const color = document.getElementById(`${type}-color`).value;
             const transparency = document.getElementById(`${type}-transparency`).value;
             const geojson = geojsonCache[type];
+            const fillType = (type === 'assembly') ? document.getElementById(`${type}-fill-type`).value : 'color';
 
             if (!geojson || !selectedNames || selectedNames.length === 0) {
                 return;
@@ -247,7 +270,7 @@
 
             drawnLayers[type].clearLayers();
             L.geoJSON(featuresToDraw, {
-                style: () => getStyle(color, transparency)
+                style: () => getStyle(color, transparency, fillType)
             }).addTo(drawnLayers[type]);
         }
 
